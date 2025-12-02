@@ -1,0 +1,7 @@
+{
+  "name": "Copy of HairstyleAI - backend integration",
+  "description": "Upload your photo to get personalized hairstyle suggestions and see them visualized on your face using Gemini 2.5 Flash Image.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
