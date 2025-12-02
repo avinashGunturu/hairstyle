@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { detectFaceShape } from '../services/geminiService';
 import { FaceShapeResult, Gender, AppView } from '../types';
 import { UploadArea } from './UploadArea';
@@ -10,6 +10,7 @@ interface FreeFaceShapeToolProps {
 }
 
 export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate }) => {
+    const MAX_FREE_USES = 1;
     const [step, setStep] = useState<'FORM' | 'UPLOAD' | 'ANALYZING' | 'RESULT'>('FORM');
     const [formData, setFormData] = useState({
         name: '',
@@ -22,6 +23,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
     const [result, setResult] = useState<FaceShapeResult | null>(null);
     const [apiError, setApiError] = useState<string | null>(null);
     const [currentLogId, setCurrentLogId] = useState<string | null>(null);
+    const [showLimitModal, setShowLimitModal] = useState(false);
 
     const calculateAge = (dobString: string): string => {
         if (!dobString) return '';
@@ -53,10 +55,18 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
+            // Check usage limit before proceeding
+            const usageCount = parseInt(localStorage.getItem('free_tool_usage_count') || '0', 10);
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session && usageCount >= MAX_FREE_USES) {
+                setShowLimitModal(true);
+                return;
+            }
+
             // Create initial log entry
             try {
                 const age = formData.dob ? calculateAge(formData.dob) : undefined;
-                const { data: { session } } = await supabase.auth.getSession();
                 const user = session?.user;
 
                 console.log("User:", user);
@@ -137,6 +147,13 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
                 if (newLog) setCurrentLogId(newLog.id);
             }
 
+            // Increment usage count in localStorage
+            const currentCount = parseInt(localStorage.getItem('free_tool_usage_count') || '0', 10);
+            localStorage.setItem('free_tool_usage_count', (currentCount + 1).toString());
+
+            // Clear legacy key if it exists to switch to new system
+            localStorage.removeItem('has_used_free_tool');
+
         } catch (err) {
             console.error("Analysis failed:", err);
             setApiError("We couldn't analyze this image. Please ensure your face is clearly visible.");
@@ -189,6 +206,41 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -z-10"></div>
 
                     <div className="p-8 md:p-12 lg:p-16">
+
+                        {/* Limit Reached Modal */}
+                        {showLimitModal && (
+                            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                                <div className="bg-white dark:bg-neutral-900 rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-neutral-800 animate-scale-in">
+                                    <div className="w-16 h-16 bg-brand-100 dark:bg-brand-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                                        🎯
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 text-center">Free Limit Reached</h3>
+                                    <p className="text-slate-600 dark:text-slate-400 text-center mb-6">
+                                        You've used your free analysis ({MAX_FREE_USES}/{MAX_FREE_USES}). Create a free account to unlock unlimited analyses!
+                                    </p>
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={() => onNavigate('SIGNUP')}
+                                            className="w-full py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all"
+                                        >
+                                            Create Free Account
+                                        </button>
+                                        <button
+                                            onClick={() => onNavigate('LOGIN')}
+                                            className="w-full py-3 bg-white dark:bg-neutral-800 text-slate-900 dark:text-white font-bold rounded-xl border border-slate-200 dark:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-700 transition-all"
+                                        >
+                                            Log In
+                                        </button>
+                                        <button
+                                            onClick={() => setShowLimitModal(false)}
+                                            className="w-full py-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-sm transition-colors"
+                                        >
+                                            Go Back
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {step === 'FORM' && (
                             <form onSubmit={handleFormSubmit} className="space-y-8 animate-fade-in max-w-3xl mx-auto">
