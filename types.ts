@@ -38,6 +38,11 @@ export interface FaceShapeResult {
   confidence: number;
   description: string;
   keyFeatures: string[];
+  usageMetadata?: {
+    promptTokenCount: number;
+    candidatesTokenCount: number;
+    totalTokenCount: number;
+  };
 }
 
 export interface GeneratedImage {

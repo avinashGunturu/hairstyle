@@ -14,8 +14,8 @@ export const analyzeFaceAndSuggestStyles = async (base64Image: string, gender: G
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // Dynamic styling prompt based on gender - STRICT instructions
-  const featurePrompt = gender === 'male' 
-    ? "MANDATORY: You must provide specific beard or facial hair styling advice that specifically complements this hairstyle and face shape." 
+  const featurePrompt = gender === 'male'
+    ? "MANDATORY: You must provide specific beard or facial hair styling advice that specifically complements this hairstyle and face shape."
     : "MANDATORY: You must provide specific eyebrow shaping or eyelash styling advice that specifically complements this hairstyle and face shape.";
 
   const featureDescription = gender === 'male'
@@ -88,8 +88,8 @@ export const detectFaceShape = async (base64Image: string, gender: Gender, age?:
       shape: { type: Type.STRING, description: "The geometric face shape (e.g., Diamond, Heart, Oblong)." },
       confidence: { type: Type.NUMBER, description: "Confidence score between 0 and 100." },
       description: { type: Type.STRING, description: "A scientific description of the facial geometry." },
-      keyFeatures: { 
-        type: Type.ARRAY, 
+      keyFeatures: {
+        type: Type.ARRAY,
         items: { type: Type.STRING },
         description: "3 key facial landmarks identified (e.g. 'Prominent cheekbones', 'Angular jaw')."
       }
@@ -124,7 +124,19 @@ export const detectFaceShape = async (base64Image: string, gender: Gender, age?:
 
     const text = response.text;
     if (!text) throw new Error("No response text from Gemini");
-    return JSON.parse(text) as FaceShapeResult;
+
+    const result = JSON.parse(text) as FaceShapeResult;
+
+    // Extract usage metadata
+    if (response.usageMetadata) {
+      result.usageMetadata = {
+        promptTokenCount: response.usageMetadata.promptTokenCount,
+        candidatesTokenCount: response.usageMetadata.candidatesTokenCount,
+        totalTokenCount: response.usageMetadata.totalTokenCount,
+      };
+    }
+
+    return result;
   } catch (error) {
     console.error("Error detecting face shape:", error);
     throw error;
@@ -168,12 +180,12 @@ export const generateHairstyleImage = async (base64Image: string, stylePrompt: s
 
     const parts = candidate?.content?.parts;
     if (parts && parts.length > 0) {
-        // Check for inline data in response
-        for (const part of parts) {
-            if (part.inlineData && part.inlineData.data) {
-                 return `data:image/png;base64,${part.inlineData.data}`;
-            }
+      // Check for inline data in response
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          return `data:image/png;base64,${part.inlineData.data}`;
         }
+      }
     }
     throw new Error("No image generated.");
 
@@ -204,11 +216,11 @@ export const generateHairstylePreview = async (styleName: string, description: s
 
     const parts = response.candidates?.[0]?.content?.parts;
     if (parts && parts.length > 0) {
-        for (const part of parts) {
-            if (part.inlineData && part.inlineData.data) {
-                 return `data:image/png;base64,${part.inlineData.data}`;
-            }
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          return `data:image/png;base64,${part.inlineData.data}`;
         }
+      }
     }
     return null;
   } catch (error) {
