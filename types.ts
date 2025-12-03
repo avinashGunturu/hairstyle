@@ -14,6 +14,7 @@ export type AppView = 'LANDING' | 'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD' | 'APP'
 export type AppStage = 'DASHBOARD' | 'DETAILS' | 'UPLOAD' | 'CONFIRM' | 'ANALYSIS' | 'RESULT';
 
 export interface UserInfo {
+  id?: string;
   name: string;
   email: string;
   mobile?: string;

@@ -11,7 +11,7 @@ const cleanBase64 = (base64: string) => {
  * Analyzes the user's face shape and suggest hairstyles using Gemini 2.5 Flash.
  */
 export const analyzeFaceAndSuggestStyles = async (base64Image: string, gender: Gender): Promise<FaceAnalysis> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
   // Dynamic styling prompt based on gender - STRICT instructions
   const featurePrompt = gender === 'male'
@@ -80,7 +80,7 @@ export const analyzeFaceAndSuggestStyles = async (base64Image: string, gender: G
  * Free Tool: Detects only the face shape without styling advice.
  */
 export const detectFaceShape = async (base64Image: string, gender: Gender, age?: string): Promise<FaceShapeResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
   const responseSchema = {
     type: Type.OBJECT,
@@ -147,7 +147,7 @@ export const detectFaceShape = async (base64Image: string, gender: Gender, age?:
  * Edits the image to apply a new hairstyle using Gemini 2.5 Flash Image.
  */
 export const generateHairstyleImage = async (base64Image: string, stylePrompt: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
   const finalPrompt = `Keep the person's face exactly the same. Change the hairstyle to ${stylePrompt}. High quality, photorealistic, cinematic lighting.`;
 
@@ -199,7 +199,7 @@ export const generateHairstyleImage = async (base64Image: string, stylePrompt: s
  * Generates a preview image of the hairstyle on a generic model using Gemini 2.5 Flash Image (Text-to-Image).
  */
 export const generateHairstylePreview = async (styleName: string, description: string, gender: Gender): Promise<string | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
   const prompt = `Professional studio portrait of a ${gender} model with ${styleName} hairstyle. ${description}. Neutral lighting, 8k resolution, photorealistic.`;
 

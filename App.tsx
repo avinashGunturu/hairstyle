@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { UserInfoForm } from './components/UserInfoForm';
 import { UploadArea } from './components/UploadArea';
@@ -21,6 +21,8 @@ import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { FreeFaceShapeTool } from './components/FreeFaceShapeTool';
 import { analyzeFaceAndSuggestStyles, generateHairstyleImage } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
+import { checkHasCredits, deductCredit, getCreditBalance } from './services/creditService';
+import { saveGenerationToHistory, getUserHistory } from './services/historyService';
 import { FaceAnalysis, LoadingState, UserInfo, AppView, AppStage, HistoryItem } from './types';
 
 // Error Banner Component
@@ -65,64 +67,170 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('LANDING');
   const [appStage, setAppStage] = useState<AppStage>('DASHBOARD');
 
-  // App Logic State
+  // Data State
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [sessionUserInfo, setSessionUserInfo] = useState<UserInfo | null>(null); // Specific for current transformation session
+  const [sessionUserInfo, setSessionUserInfo] = useState<UserInfo | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Generation State
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<FaceAnalysis | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string>('');
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [error, setError] = useState<string | null>(null);
 
-  // History State
-  const [history, setHistory] = useState<HistoryItem[]>(() => {
-    const saved = localStorage.getItem('hairstyle_history');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const currentViewRef = useRef(currentView);
+  const appStageRef = useRef(appStage);
 
-  // Supabase Auth Listener
+  // Keep refs in sync with state
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserInfo({
-          name: session.user.user_metadata.full_name || 'User',
-          email: session.user.email || '',
-          gender: session.user.user_metadata.gender || 'male',
-          mobile: session.user.user_metadata.mobile,
-          dob: session.user.user_metadata.dob,
-        });
-      }
-    });
+    currentViewRef.current = currentView;
+  }, [currentView]);
 
-    // Listen for changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUserInfo({
-          name: session.user.user_metadata.full_name || 'User',
-          email: session.user.email || '',
-          gender: session.user.user_metadata.gender || 'male',
-          mobile: session.user.user_metadata.mobile,
-          dob: session.user.user_metadata.dob,
-        });
-        // If we are on Login/Signup pages, redirect to App
-        if (currentView === 'LOGIN' || currentView === 'SIGNUP') {
+  useEffect(() => {
+    appStageRef.current = appStage;
+  }, [appStage]);
+
+  // Supabase Auth Listener - Single source of truth
+  useEffect(() => {
+    let mounted = true;
+    console.log('[Auth] Hydrating session and setting up listener');
+
+    let authSubscription: any = null; // To hold the subscription object
+
+    const hydrate = async () => {
+      try {
+        // 1) immediate getSession to hydrate UI quickly on refresh
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr) console.warn('[Auth] getSession error:', sessionErr);
+        const session = sessionData?.session;
+
+        if (session?.user && mounted) {
+          const u = session.user;
+          const userData = {
+            id: u.id,
+            name: u.user_metadata?.full_name || 'User',
+            email: u.email || '',
+            gender: u.user_metadata?.gender || 'male',
+            mobile: u.user_metadata?.mobile,
+            dob: u.user_metadata?.dob,
+          };
+          setUserInfo(userData);
+          setSessionUserInfo(userData);
+
+          // fetch history (defensive)
+          try {
+            const dbHistory = await getUserHistory(u.id);
+            const formattedHistory: HistoryItem[] = dbHistory.map((item: any) => ({
+              id: item.id,
+              timestamp: new Date(item.created_at).getTime(),
+              customerName: u.user_metadata?.full_name || 'User',
+              styleName: item.style_name,
+              faceShape: item.face_shape || 'Unknown',
+              originalImage: '',
+              generatedImage: '',
+              gender: item.gender || u.user_metadata?.gender || 'male'
+            }));
+            setHistory(formattedHistory);
+          } catch (err) {
+            console.error('[Auth] error loading history on hydrate', err);
+          }
+
+          // make sure app shows dashboard when hydrated
+          // Only redirect if we are on a "public" page that should be dashboard, 
+          // or if we want to force dashboard. 
+          // For now, respecting the logic to set dashboard if we have a user.
           setAppStage('DASHBOARD');
           setCurrentView('APP');
         }
-      } else {
-        setUserInfo(null);
-        if (currentView === 'APP' || currentView === 'SETTINGS' || currentView === 'HISTORY') {
-          setCurrentView('LANDING');
+
+        // 2) set up listener (single)
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('[Auth] event', event);
+          if (event === 'SIGNED_OUT') {
+            setUserInfo(null);
+            setSessionUserInfo(null);
+            setHistory([]);
+            setOriginalImage(null);
+            setAnalysis(null);
+            setGeneratedImage(null);
+            // navigate away from protected pages
+            const view = currentViewRef.current;
+            if (view === 'APP' || view === 'SETTINGS' || view === 'HISTORY') {
+              setCurrentView('LANDING');
+              setAppStage('DASHBOARD');
+            }
+            return;
+          }
+
+          if (session?.user) {
+            const u = session.user;
+            const userData = {
+              id: u.id,
+              name: u.user_metadata?.full_name || 'User',
+              email: u.email || '',
+              gender: u.user_metadata?.gender || 'male',
+              mobile: u.user_metadata?.mobile,
+              dob: u.user_metadata?.dob,
+            };
+            setUserInfo(userData);
+            setSessionUserInfo(userData);
+
+            // fetch history on sign in
+            try {
+              const dbHistory = await getUserHistory(u.id);
+              const formattedHistory: HistoryItem[] = dbHistory.map((item: any) => ({
+                id: item.id,
+                timestamp: new Date(item.created_at).getTime(),
+                customerName: u.user_metadata?.full_name || 'User',
+                styleName: item.style_name,
+                faceShape: item.face_shape || 'Unknown',
+                originalImage: '',
+                generatedImage: '',
+                gender: item.gender || u.user_metadata?.gender || 'male'
+              }));
+              setHistory(formattedHistory);
+            } catch (err) {
+              console.error('[Auth] Error fetching history after sign in:', err);
+            }
+
+            // nav rules
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+              setAppStage('DASHBOARD');
+              setCurrentView('APP');
+            } else {
+              const view = currentViewRef.current;
+              if (view === 'LOGIN' || view === 'SIGNUP') {
+                setAppStage('DASHBOARD');
+                setCurrentView('APP');
+              }
+            }
+          }
+        });
+        authSubscription = subscription; // Store the subscription
+      } catch (err) {
+        console.error('[Auth] hydrate failure', err);
+      }
+    };
+
+    hydrate();
+
+    // clean up subscription on unmount
+    return () => {
+      mounted = false;
+      if (authSubscription) {
+        try {
+          authSubscription.unsubscribe();
+          console.log('[Auth] unsubscribed');
+        } catch (err) {
+          console.warn('[Auth] subscription cleanup failed', err);
         }
       }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [currentView]);
+    };
+  }, []); // Empty deps - only run once
 
   const handleNavigate = (view: AppView) => {
     setCurrentView(view);
@@ -140,19 +248,25 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setLoadingState(LoadingState.LOGGING_OUT);
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        // fallback: still clear UI but surface an error
+      }
+    } catch (err) {
+      console.error('Unexpected signOut failure', err);
+    } finally {
+      // clear local state and (optionally) localStorage tokens
       setUserInfo(null);
       setSessionUserInfo(null);
       setOriginalImage(null);
       setAnalysis(null);
       setGeneratedImage(null);
+      setHistory([]);
+      // recommended: remove supabase auth tokens (v2 stores in browser automatically, but in edge cases)
+      try { localStorage.removeItem('supabase.auth.token'); } catch (e) { }
       handleNavigate('LANDING');
-    } catch (error) {
-      console.error("Error signing out:", error);
-    } finally {
-      setLoadingState(LoadingState.IDLE);
     }
   };
 
@@ -160,23 +274,24 @@ const App: React.FC = () => {
 
   const handleStartNewSession = () => {
     // Start a new session. DO NOT pre-fill details to allow user to enter fresh info.
-    setSessionUserInfo(null);
+    setSessionUserInfo(userInfo); // Reset to logged-in user
     setOriginalImage(null);
     setAnalysis(null);
     setGeneratedImage(null);
     setError(null);
-    setAppStage('DETAILS');
+    setAppStage('UPLOAD');
+    handleNavigate('APP');
   };
 
-  const handleSessionDetailsSubmit = (info: UserInfo) => {
-    setSessionUserInfo(info);
+  const handleSessionDetailsSubmit = (data: UserInfo) => {
+    setSessionUserInfo(data);
     // If the user updated their own info during session setup, optionally update main profile
     // For now, we keep session info separate unless explicitly syncing
     setAppStage('UPLOAD');
   };
 
-  const handleImageSelect = useCallback((base64: string) => {
-    setOriginalImage(base64);
+  const handleImageSelect = useCallback((base64Image: string) => {
+    setOriginalImage(base64Image);
     setAnalysis(null);
     setGeneratedImage(null);
     setSelectedStyle('');
@@ -212,6 +327,32 @@ const App: React.FC = () => {
   const handleGenerateStyle = useCallback(async (stylePrompt: string) => {
     if (!originalImage || !sessionUserInfo) return;
 
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Session check:', session?.user ? 'Logged in' : 'Not logged in', session?.user?.id);
+    if (!session?.user) {
+      setError('Please log in to generate hairstyles.');
+      return;
+    }
+
+    // Check if user has credits
+    console.log('Checking credits for user:', session.user.id);
+    // Use local state for immediate check if possible, but double check with DB
+    const hasCredits = await checkHasCredits(session.user.id);
+    console.log('Has credits?', hasCredits);
+
+    if (!hasCredits) {
+      const balance = await getCreditBalance(session.user.id);
+      console.log('Credit balance:', balance);
+      setError(`Insufficient credits! You have ${balance} credits. Redirecting to purchase...`);
+      setLoadingState(LoadingState.IDLE);
+      // Navigate to settings after a brief delay
+      setTimeout(() => {
+        handleNavigate('SETTINGS');
+      }, 2000);
+      return;
+    }
+
     setSelectedStyle(stylePrompt);
     setLoadingState(LoadingState.GENERATING);
     setError(null);
@@ -219,24 +360,42 @@ const App: React.FC = () => {
     try {
       const resultBase64 = await generateHairstyleImage(originalImage, stylePrompt);
       setGeneratedImage(resultBase64);
+
+      // Deduct credit after successful generation
+      const deductResult = await deductCredit(
+        session.user.id,
+        `Generated ${stylePrompt} hairstyle`,
+        'style_generation'
+      );
+
+      if (!deductResult.success) {
+        console.error('Failed to deduct credit:', deductResult.error);
+        // Still show the image, but log the error
+      }
+
       setLoadingState(LoadingState.IDLE);
       setAppStage('RESULT');
 
-      // Save to History - NOTE: We DO NOT save images to history for privacy reasons.
+      // Save to Database History
+      await saveGenerationToHistory(
+        session.user.id,
+        stylePrompt,
+        analysis?.faceShape,
+        sessionUserInfo.gender
+      );
+
+      // Update local history immediately
       const newHistoryItem: HistoryItem = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(), // Temporary ID for immediate display
         timestamp: Date.now(),
         customerName: sessionUserInfo.name,
         styleName: stylePrompt,
         faceShape: analysis?.faceShape || 'Unknown',
-        originalImage: '', // Deprecated
-        generatedImage: '', // Deprecated
+        originalImage: '', // Privacy
+        generatedImage: '', // Privacy
         gender: sessionUserInfo.gender
       };
-
-      const updatedHistory = [newHistoryItem, ...history];
-      setHistory(updatedHistory);
-      localStorage.setItem('hairstyle_history', JSON.stringify(updatedHistory));
+      setHistory(prev => [newHistoryItem, ...prev]);
 
     } catch (err: any) {
       console.error(err);
