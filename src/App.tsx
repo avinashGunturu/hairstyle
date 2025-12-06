@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Routes, Route, useNavigate, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
 import { Footer } from './components/Footer';
@@ -14,12 +14,34 @@ import { HistoryPage } from './components/HistoryPage';
 import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { FreeFaceShapeTool } from './components/FreeFaceShapeTool';
 import { MainApp } from './components/MainApp';
+import { AnalysisSessionPage } from './components/AnalysisSessionPage';
 import { supabase } from './services/supabaseClient';
 import { getUserHistory } from './services/historyService';
 import { UserInfo, HistoryItem, AppView } from './types';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ErrorBanner } from './components/ErrorBanner';
 import { GlobalErrorModal } from './components/GlobalErrorModal';
+
+// --- Auth Context (defined OUTSIDE App to prevent remounts) ---
+interface AuthContextType {
+  userInfo: UserInfo | null;
+  isInitializing: boolean;
+}
+
+const AuthContext = createContext<AuthContextType>({ userInfo: null, isInitializing: true });
+
+// --- Protected Route (defined OUTSIDE App to prevent remounts) ---
+const ProtectedRoute: React.FC = () => {
+  const { userInfo, isInitializing } = useContext(AuthContext);
+
+  if (isInitializing) {
+    return <LoadingOverlay message="Loading..." />;
+  }
+  if (!userInfo) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+};
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -265,112 +287,108 @@ const App: React.FC = () => {
     navigate('/');
   };
 
-  // Protected Route Wrapper
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    if (isInitializing) {
-      return <LoadingOverlay message="Loading..." />;
-    }
-    if (!userInfo) {
-      return <Navigate to="/login" replace />;
-    }
-    return <>{children}</>;
-  };
-
   return (
-    <div className={`min-h-screen transition-colors duration-500 font-sans selection:bg-brand-500/30 flex flex-col
+    <AuthContext.Provider value={{ userInfo, isInitializing }}>
+      <div className={`min-h-screen transition-colors duration-500 font-sans selection:bg-brand-500/30 flex flex-col
       ${theme === 'dark'
-        ? 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-slate-100'
-        : 'bg-slate-50 text-slate-900'}`
-    }>
-      {/* Background ambience */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-500/10 dark:bg-brand-500/5 rounded-full blur-[100px] animate-float"></div>
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-600/10 dark:bg-blue-600/5 rounded-full blur-[100px] animate-float" style={{ animationDelay: '2s' }}></div>
+          ? 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-slate-100'
+          : 'bg-slate-50 text-slate-900'}`
+      }>
+        {/* Background ambience */}
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-brand-500/10 dark:bg-brand-500/5 rounded-full blur-[100px] animate-float"></div>
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-600/10 dark:bg-blue-600/5 rounded-full blur-[100px] animate-float" style={{ animationDelay: '2s' }}></div>
+        </div>
+
+        <Header
+          userInfo={userInfo}
+          onLogout={handleLogout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          currentView={currentView}
+          onNavigate={handleNavigate}
+        />
+
+        {/* GLOBAL ERROR BANNER (for minor errors) */}
+        {error && !showGlobalErrorModal && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+        {/* GLOBAL ERROR MODAL (for API failures) */}
+        <GlobalErrorModal
+          isOpen={showGlobalErrorModal}
+          onClose={() => {
+            setShowGlobalErrorModal(false);
+            setError(null);
+          }}
+          onGoHome={() => {
+            setShowGlobalErrorModal(false);
+            setError(null);
+            navigate('/');
+          }}
+        />
+
+        <main className="relative z-10 flex-grow max-w-full mx-auto w-full">
+          <Routes>
+            <Route path="/" element={<LandingPage onStart={() => navigate('/signup')} onNavigate={handleNavigate} />} />
+            <Route path="/login" element={<AuthPage initialView="LOGIN" onSuccess={() => navigate('/app')} onNavigate={handleNavigate} />} />
+            <Route path="/signup" element={<AuthPage initialView="SIGNUP" onSuccess={() => navigate('/app')} onNavigate={handleNavigate} />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage onNavigate={handleNavigate} />} />
+
+            <Route path="/app" element={<ProtectedRoute />}>
+              <Route index element={
+                <MainApp
+                  userInfo={userInfo}
+                  history={history}
+                  onNavigate={handleNavigate}
+                  setHistory={setHistory}
+                />
+              } />
+              {/* Note the relative path here, since it is nested under /app */}
+              <Route
+                path="suggestions/:sessionId"
+                element={
+                  <AnalysisSessionPage userInfo={userInfo} setHistory={setHistory} onNavigate={handleNavigate} />
+                }
+              />
+            </Route>
+
+            <Route element={<ProtectedRoute />}>
+              <Route path="/settings" element={
+                <SettingsPage userInfo={userInfo!} onNavigate={handleNavigate} />
+              } />
+
+              <Route path="/history" element={
+                <HistoryPage
+                  history={history}
+                  onNavigate={handleNavigate}
+                  onSelect={(item) => {
+                    // Handle history selection (might need to pass state to MainApp via location state or context)
+                    // For now, redirect to app
+                    navigate('/app');
+                  }}
+                />
+              } />
+            </Route>
+
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage onNavigate={handleNavigate} />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/success-stories" element={<SuccessStoriesPage />} />
+            <Route path="/face-shape-tool" element={<FreeFaceShapeTool onNavigate={handleNavigate} />} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+
+        <Footer onNavigate={handleNavigate} userInfo={userInfo} />
+
+        {/* Loading Overlays */}
+        {loadingState === 'LOGGING_OUT' && (
+          <LoadingOverlay message="Signing out..." />
+        )}
       </div>
-
-      <Header
-        userInfo={userInfo}
-        onLogout={handleLogout}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        currentView={currentView}
-        onNavigate={handleNavigate}
-      />
-
-      {/* GLOBAL ERROR BANNER (for minor errors) */}
-      {error && !showGlobalErrorModal && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-
-      {/* GLOBAL ERROR MODAL (for API failures) */}
-      <GlobalErrorModal
-        isOpen={showGlobalErrorModal}
-        onClose={() => {
-          setShowGlobalErrorModal(false);
-          setError(null);
-        }}
-        onGoHome={() => {
-          setShowGlobalErrorModal(false);
-          setError(null);
-          navigate('/');
-        }}
-      />
-
-      <main className="relative z-10 flex-grow max-w-full mx-auto w-full">
-        <Routes>
-          <Route path="/" element={<LandingPage onStart={() => navigate('/signup')} onNavigate={handleNavigate} />} />
-          <Route path="/login" element={<AuthPage initialView="LOGIN" onSuccess={() => navigate('/app')} onNavigate={handleNavigate} />} />
-          <Route path="/signup" element={<AuthPage initialView="SIGNUP" onSuccess={() => navigate('/app')} onNavigate={handleNavigate} />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage onNavigate={handleNavigate} />} />
-
-          <Route path="/app/*" element={
-            <ProtectedRoute>
-              <MainApp
-                userInfo={userInfo}
-                history={history}
-                onNavigate={handleNavigate}
-                setHistory={setHistory}
-              />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <SettingsPage userInfo={userInfo!} onNavigate={handleNavigate} />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/history" element={
-            <ProtectedRoute>
-              <HistoryPage
-                history={history}
-                onNavigate={handleNavigate}
-                onSelect={(item) => {
-                  // Handle history selection (might need to pass state to MainApp via location state or context)
-                  // For now, redirect to app
-                  navigate('/app');
-                }}
-              />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage onNavigate={handleNavigate} />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/success-stories" element={<SuccessStoriesPage />} />
-          <Route path="/face-shape-tool" element={<FreeFaceShapeTool onNavigate={handleNavigate} />} />
-
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-
-      <Footer onNavigate={handleNavigate} userInfo={userInfo} />
-
-      {/* Loading Overlays */}
-      {loadingState === 'LOGGING_OUT' && (
-        <LoadingOverlay message="Signing out..." />
-      )}
-    </div>
+    </AuthContext.Provider>
   );
 };
 

@@ -1,22 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DashboardHome } from './DashboardHome';
 import { UserInfoForm } from './UserInfoForm';
 import { UploadArea } from './UploadArea';
-import { SuggestionPanel } from './SuggestionPanel';
-import { ResultView } from './ResultView';
 import { LoadingOverlay } from './LoadingOverlay';
 import { ErrorBanner } from './ErrorBanner';
 import { UserInfo, HistoryItem, AppView, FaceAnalysis } from '../types';
-import { analyzeFaceAndSuggestStyles, generateHairstyleImage } from '../services/geminiService';
-import { checkHasCredits, deductCredit } from '../services/creditService';
-import { saveGenerationToHistory } from '../services/historyService';
+import { analyzeFaceAndSuggestStyles } from '../services/geminiService';
+import { saveSession } from '../services/sessionService';
 
 interface MainAppProps {
     userInfo: UserInfo | null;
     history: HistoryItem[];
     onNavigate: (view: AppView) => void;
-    setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>;
 }
 
 type AppStage = 'DASHBOARD' | 'DETAILS' | 'UPLOAD' | 'PREVIEW' | 'ANALYSIS' | 'RESULT';
@@ -24,18 +20,18 @@ type AppStage = 'DASHBOARD' | 'DETAILS' | 'UPLOAD' | 'PREVIEW' | 'ANALYSIS' | 'R
 enum LoadingState {
     IDLE,
     ANALYZING,
-    GENERATING,
+    // GENERATING, // Removed as per instruction
 }
 
-export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate, setHistory }) => {
+export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [appStage, setAppStage] = useState<AppStage>('DASHBOARD');
     const [sessionUserInfo, setSessionUserInfo] = useState<UserInfo | null>(null);
     const [originalImage, setOriginalImage] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<FaceAnalysis | null>(null);
-    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-    const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+    // const [generatedImage, setGeneratedImage] = useState<string | null>(null); // Removed as per instruction
+    // const [selectedStyle, setSelectedStyle] = useState<string | null>(null); // Removed as per instruction
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [shouldNavigateToSuggestions, setShouldNavigateToSuggestions] = useState(false);
 
@@ -45,69 +41,42 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
 
     // Navigate to suggestions after analysis is complete
     useEffect(() => {
-        if (shouldNavigateToSuggestions) {
-            console.log("shouldNavigateToSuggestions is true. Checking dependencies...");
-            console.log("Analysis:", !!analysis);
-            console.log("OriginalImage:", !!originalImage);
-
-            if (analysis && originalImage) {
-                console.log("All conditions met. Navigating to suggestions...");
-                setAppStage('ANALYSIS');
-                navigate('/app/suggestions');
-                setShouldNavigateToSuggestions(false);
-            } else {
-                console.warn("Waiting for state updates to complete...");
-            }
+        if (shouldNavigateToSuggestions && analysis && originalImage) {
+            setAppStage('ANALYSIS');
+            navigate('/app/suggestions'); // This will likely be intercepted by the analyzeImage logic directly navigating, but keeping as backup
+            setShouldNavigateToSuggestions(false);
         }
     }, [shouldNavigateToSuggestions, analysis, originalImage, navigate]);
 
-    // Sync URL with AppStage (only for DASHBOARD)
+    // Sync URL with AppStage - ONLY redirect from truly invalid states
     useEffect(() => {
-        console.log("AppStage changed to:", appStage);
-        console.log("Location pathname:", location.pathname);
+        // 1. Don't interfere during loading or active navigation
+        if (loadingState !== LoadingState.IDLE || shouldNavigateToSuggestions) {
+            return;
+        }
 
-        // Only redirect to dashboard if we are in DASHBOARD stage and not already there
-        // AND we are not in a valid sub-route flow like suggestions
-        if (appStage === 'DASHBOARD' && location.pathname !== '/app' && location.pathname !== '/app/suggestions') {
-            console.log("Redirecting to /app because stage is DASHBOARD");
+        const path = location.pathname;
+
+        // 2. Handle Dashboard route
+        if (appStage === 'DASHBOARD' && path !== '/app') {
+            console.log("Dashboard stage mismatch, ensuring /app");
             navigate('/app');
         }
-    }, [appStage]);
-
-    // Handle direct access to /app/suggestions
-    useEffect(() => {
-        if (location.pathname === '/app/suggestions') {
-            if (!analysis || !originalImage) {
-                // Redirect to dashboard if data is missing
-                console.log("Missing data on suggestions route (analysis or originalImage missing), redirecting to dashboard");
-                setAppStage('DASHBOARD');
-                navigate('/app', { replace: true });
-            } else if (appStage !== 'ANALYSIS' && appStage !== 'RESULT') {
-                console.log("Setting stage to ANALYSIS from URL");
-                setAppStage('ANALYSIS');
-            }
-        }
-    }, [location.pathname, analysis, originalImage, navigate, appStage]);
+    }, [appStage, loadingState, location.pathname, shouldNavigateToSuggestions, navigate]);
 
     // Reset state when starting fresh
     const handleStartNewSession = () => {
         setSessionUserInfo(userInfo); // Pre-fill with account info
         setOriginalImage(null);
         setAnalysis(null);
-        setGeneratedImage(null);
-        setSelectedStyle(null);
+        // setGeneratedImage(null); // Removed as per instruction
+        // setSelectedStyle(null); // Removed as per instruction
         setSelectedFile(null);
         setAppStage('DETAILS');
     };
 
     // State Validation - Relaxed to prevent premature resets
-    useEffect(() => {
-        // Only reset if we are deep in the flow and missing critical data, 
-        // but allow some grace period or rely on component-level checks.
-        // For now, we'll remove the aggressive auto-reset to fix the "not working" issue.
-        // The components (SuggestionPanel, ResultView) handle missing data gracefully or we can check in render.
-    }, [appStage, sessionUserInfo, originalImage]);
-
+    // Removed as per instruction
 
     // Handlers
     const handleDetailsSubmit = (data: UserInfo) => {
@@ -116,28 +85,23 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
     };
 
     const handleImageSelect = async (file: File) => {
-        console.log("Image selected:", file.name, file.type, file.size);
         try {
             const reader = new FileReader();
             reader.onload = () => {
-                console.log("File read successfully, showing preview...");
                 setOriginalImage(reader.result as string);
                 setSelectedFile(file);
                 setAppStage('PREVIEW');
             };
             reader.onerror = (e) => {
-                console.error("FileReader error:", e);
                 setError("Failed to read image file.");
             };
             reader.readAsDataURL(file);
         } catch (err) {
-            console.error("handleImageSelect error:", err);
             setError("Failed to process image. Please try again.");
         }
     };
 
     const analyzeImage = async (file: File) => {
-        console.log("Starting analyzeImage with file:", file.name);
         setLoadingState(LoadingState.ANALYZING);
 
         try {
@@ -149,95 +113,25 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
                 reader.readAsDataURL(file);
             });
 
-            console.log("Image converted to base64, calling API...");
             const result = await analyzeFaceAndSuggestStyles(base64Image, sessionUserInfo?.gender || 'male');
-            console.log("Analysis result:", result);
+
+            // Save session to local storage for persistence
+            const gender = sessionUserInfo?.gender || 'male';
+            const sessionId = saveSession(result, base64Image, gender);
+
             setAnalysis(result);
             setLoadingState(LoadingState.IDLE);
-            // Set flag to trigger navigation in useEffect after state updates
-            console.log("Analysis complete, setting navigation flag...");
-            setShouldNavigateToSuggestions(true);
+
+            // Navigate to the specific session URL
+            setAppStage('ANALYSIS');
+            navigate(`/app/suggestions/${sessionId}`);
+            setShouldNavigateToSuggestions(false);
         } catch (err: any) {
             console.error("Analysis failed:", err);
-            // CRITICAL: Stop loading first
             setLoadingState(LoadingState.IDLE);
             setError(err.message || "Failed to analyze image. Please try another photo.");
-            // Dispatch global error for critical API failures
             window.dispatchEvent(new CustomEvent('apiError'));
-            setAppStage('UPLOAD'); // Go back on failure
-        }
-    };
-
-    const handleGenerateStyle = async (styleName: string, customPrompt?: string) => {
-        // Explicit check before starting generation
-        if (!userInfo || !originalImage || !sessionUserInfo || !analysis) {
-            setError("Missing session data. Please start over.");
-            setAppStage('DASHBOARD');
-            return;
-        }
-
-        const hasCredits = await checkHasCredits(userInfo.id);
-        if (!hasCredits) {
-            setError("Insufficient credits. Please upgrade your plan.");
-            // Optionally redirect to settings/pricing
-            setTimeout(() => onNavigate('SETTINGS'), 2000);
-            return;
-        }
-
-        setLoadingState(LoadingState.GENERATING);
-        const finalPrompt = customPrompt || styleName;
-        setSelectedStyle(finalPrompt);
-
-        try {
-            const resultImageUrl = await generateHairstyleImage(
-                originalImage,
-                finalPrompt
-            );
-
-            setGeneratedImage(resultImageUrl);
-
-            // Deduct credit & Save history
-            await deductCredit(userInfo.id);
-
-            await saveGenerationToHistory(
-                userInfo.id,
-                finalPrompt,
-                analysis.faceShape,
-                sessionUserInfo.gender
-            );
-
-            const newHistoryItem: HistoryItem = {
-                id: crypto.randomUUID(),
-                timestamp: Date.now(),
-                customerName: sessionUserInfo.name,
-                styleName: finalPrompt,
-                faceShape: analysis.faceShape,
-                originalImage: originalImage, // In a real app, we might not have the URL yet if it's base64, or we use the base64
-                generatedImage: resultImageUrl,
-                gender: sessionUserInfo.gender || 'male'
-            };
-
-            setHistory(prev => [newHistoryItem, ...prev]);
-
-            setAppStage('RESULT');
-        } catch (err: any) {
-            console.error("Generation failed", err);
-            setError(err.message || "Failed to generate hairstyle. Please try again.");
-            // Dispatch global error for critical API failures
-            window.dispatchEvent(new CustomEvent('apiError'));
-        } finally {
-            setLoadingState(LoadingState.IDLE);
-        }
-    };
-
-    const handleDownload = () => {
-        if (generatedImage) {
-            const link = document.createElement('a');
-            link.href = generatedImage;
-            link.download = `hairstyle-transformation-${Date.now()}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            setAppStage('UPLOAD');
         }
     };
 
@@ -245,7 +139,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
         setOriginalImage(null);
         setSelectedFile(null);
         setAnalysis(null);
-        setGeneratedImage(null);
+        // setGeneratedImage(null); // Removed as per instruction
         setSessionUserInfo(null);
         setAppStage('DASHBOARD');
     };
@@ -254,7 +148,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-            {loadingState === LoadingState.GENERATING && <LoadingOverlay message="Generating your new look..." />}
             {loadingState === LoadingState.ANALYZING && <LoadingOverlay message="Analyzing face structure..." />}
 
             {appStage === 'DASHBOARD' && (
@@ -339,35 +232,11 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
             )}
 
             {appStage === 'ANALYSIS' && (
-                <div className="animate-fade-in pt-8">
-                    {loadingState === LoadingState.ANALYZING ? (
-                        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                            {/* Loading overlay handles this, but we can keep a placeholder if needed */}
-                        </div>
-                    ) : (
-                        analysis && sessionUserInfo && (
-                            <SuggestionPanel
-                                analysis={analysis}
-                                gender={sessionUserInfo.gender || 'male'}
-                                originalImage={originalImage || ''}
-                                onSelectStyle={(style) => handleGenerateStyle(style)}
-                                onCustomPrompt={(prompt) => handleGenerateStyle('Custom Style', prompt)}
-                            />
-                        )
-                    )}
+                <div className="animate-fade-in pt-8 flex flex-col items-center justify-center min-h-[60vh]">
+                    {/* Placeholder while redirecting */}
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
+                    <p className="mt-4 text-slate-500">Redirecting to session...</p>
                 </div>
-            )}
-
-            {appStage === 'RESULT' && generatedImage && originalImage && (
-                <ResultView
-                    originalImage={originalImage}
-                    generatedImage={generatedImage}
-                    selectedStyle={selectedStyle || 'New Style'}
-                    onBack={() => setAppStage('ANALYSIS')}
-                    onReset={() => setAppStage('DASHBOARD')}
-                    onDownload={handleDownload}
-                    onEmailShare={() => { }}
-                />
             )}
         </div>
     );
