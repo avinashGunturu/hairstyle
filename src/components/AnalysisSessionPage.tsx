@@ -78,8 +78,10 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
 
             setGeneratedImage(resultImageUrl);
 
-            // Deduct & Save
-            await deductCredit(userInfo.id, `Generated style: ${finalPrompt}`); // Added required reason argument
+            // Deduct credit & notify header to update
+            await deductCredit(userInfo.id, `Generated style: ${finalPrompt}`);
+            window.dispatchEvent(new CustomEvent('creditsUpdated')); // Update header credits display
+
             await saveGenerationToHistory(
                 userInfo.id,
                 finalPrompt,
@@ -126,8 +128,8 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
                     originalImage={originalImage}
                     generatedImage={generatedImage}
                     selectedStyle={selectedStyle}
-                    // onBack={() => setGeneratedImage(null)} // Go back to suggestions
-                    onBack={() => navigate('/app')}
+                    onBack={() => setGeneratedImage(null)} // Go back to suggestions
+                    // onBack={() => navigate('/app')}
                     onReset={() => navigate('/app')} // Go back to upload
                     onDownload={() => {
                         const link = document.createElement('a');
