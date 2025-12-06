@@ -75,119 +75,135 @@ const App: React.FC = () => {
   // Supabase Auth Listener - Single source of truth
   useEffect(() => {
     let mounted = true;
-    console.log('[Auth] Hydrating session and setting up listener');
+    console.log('[Auth] Setting up auth listener');
 
-    let authSubscription: any = null;
+    // Check for OAuth errors in URL (both query params and hash)
+    const checkForOAuthErrors = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
 
-    const hydrate = async () => {
-      try {
-        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-        if (sessionErr) console.warn('[Auth] getSession error:', sessionErr);
-        const session = sessionData?.session;
+      const error = urlParams.get('error') || hashParams.get('error');
+      const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
 
-        if (session?.user && mounted) {
-          const u = session.user;
-          const userData = {
-            id: u.id,
-            name: u.user_metadata?.full_name || 'User',
-            email: u.email || '',
-            gender: u.user_metadata?.gender || 'male',
-            mobile: u.user_metadata?.mobile,
-            dob: u.user_metadata?.dob,
-          };
-          setUserInfo(userData);
+      if (error === 'access_denied') {
+        const message = errorDescription || 'Access was denied. Please try again or use a different sign-in method.';
+        setError(message);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return true;
+      }
+      return false;
+    };
 
-          // fetch history (defensive)
-          try {
-            const dbHistory = await getUserHistory(u.id);
-            const formattedHistory: HistoryItem[] = dbHistory.map((item: any) => ({
-              id: item.id,
-              timestamp: new Date(item.created_at).getTime(),
-              customerName: u.user_metadata?.full_name || 'User',
-              styleName: item.style_name,
-              faceShape: item.face_shape || 'Unknown',
-              originalImage: '',
-              generatedImage: '',
-              gender: item.gender || u.user_metadata?.gender || 'male'
-            }));
-            setHistory(formattedHistory);
-          } catch (err) {
-            console.error('[Auth] error loading history on hydrate', err);
+    // Check for errors first
+    if (checkForOAuthErrors()) {
+      setIsInitializing(false);
+      return;
+    }
+
+    // Track last session to prevent duplicate processing (StrictMode causes double fires)
+    let lastSessionJson = '';
+
+    // Set up auth listener FIRST to catch INITIAL_SESSION
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Deduplicate: skip if session is identical to last one
+      const sessionJson = JSON.stringify(session?.user?.id || null);
+      if (sessionJson === lastSessionJson && event !== 'SIGNED_OUT') {
+        console.log('[Auth] Skipping duplicate event:', event);
+        return;
+      }
+      lastSessionJson = sessionJson;
+
+      console.log('[Auth] event', event, 'session:', !!session);
+
+      if (event === 'SIGNED_OUT') {
+        if (mounted) {
+          setUserInfo(null);
+          setHistory([]);
+          setIsInitializing(false);
+          // Redirect if on protected route
+          if (['/app', '/settings', '/history'].includes(location.pathname)) {
+            navigate('/login');
           }
         }
+        return;
+      }
 
-        const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('[Auth] event', event);
-          if (event === 'SIGNED_OUT') {
-            setUserInfo(null);
-            setHistory([]);
-            // Redirect if on protected route
-            console.log('[Auth] location.pathname', location.pathname);
-            if (['/app', '/settings', '/history', '/'].includes(location.pathname)) {
-              navigate('/login');
-            }
-            return;
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('[Auth] Token refreshed successfully');
+      }
+
+      if (session?.user && mounted) {
+        const u = session.user;
+        const userData = {
+          id: u.id,
+          name: u.user_metadata?.full_name || 'User',
+          email: u.email || '',
+          gender: u.user_metadata?.gender || 'male',
+          mobile: u.user_metadata?.mobile,
+          dob: u.user_metadata?.dob,
+        };
+        setUserInfo(userData);
+
+        // Fetch history
+        try {
+          const dbHistory = await getUserHistory(u.id);
+          const formattedHistory: HistoryItem[] = dbHistory.map((item: any) => ({
+            id: item.id,
+            timestamp: new Date(item.created_at).getTime(),
+            customerName: u.user_metadata?.full_name || 'User',
+            styleName: item.style_name,
+            faceShape: item.face_shape || 'Unknown',
+            originalImage: '',
+            generatedImage: '',
+            gender: item.gender || u.user_metadata?.gender || 'male'
+          }));
+          if (mounted) setHistory(formattedHistory);
+        } catch (err) {
+          console.error('[Auth] Error fetching history:', err);
+        }
+
+        // Redirect logic for auth events
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          if (mounted) setIsInitializing(false);
+          // If on login/signup, go to app
+          if (['/login', '/signup'].includes(location.pathname)) {
+            navigate('/app');
           }
+        }
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // No session on initial load
+        if (mounted) setIsInitializing(false);
+      }
+    });
 
-          if (session?.user) {
-            const u = session.user;
-            const userData = {
-              id: u.id,
-              name: u.user_metadata?.full_name || 'User',
-              email: u.email || '',
-              gender: u.user_metadata?.gender || 'male',
-              mobile: u.user_metadata?.mobile,
-              dob: u.user_metadata?.dob,
-            };
-            setUserInfo(userData);
-
-            // fetch history on sign in
-            try {
-              const dbHistory = await getUserHistory(u.id);
-              const formattedHistory: HistoryItem[] = dbHistory.map((item: any) => ({
-                id: item.id,
-                timestamp: new Date(item.created_at).getTime(),
-                customerName: u.user_metadata?.full_name || 'User',
-                styleName: item.style_name,
-                faceShape: item.face_shape || 'Unknown',
-                originalImage: '',
-                generatedImage: '',
-                gender: item.gender || u.user_metadata?.gender || 'male'
-              }));
-              setHistory(formattedHistory);
-            } catch (err) {
-              console.error('[Auth] Error fetching history after sign in:', err);
-            }
-
-            // Redirect logic for auth events
-            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-              // If on login/signup, go to app
-              if (['/login', '/signup'].includes(location.pathname)) {
-                navigate('/app');
-              }
-            }
-          }
-        });
-        authSubscription = subscription;
+    // Also call getSession for cases where listener might not fire
+    const checkExistingSession = async () => {
+      try {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr) {
+          console.warn('[Auth] getSession error:', sessionErr);
+        }
+        // If no session and still initializing after a brief delay, stop initializing
+        if (!sessionData?.session && mounted) {
+          setTimeout(() => {
+            if (mounted) setIsInitializing(false);
+          }, 500);
+        }
       } catch (err) {
-        console.error('[Auth] hydrate failure', err);
-      } finally {
+        console.error('[Auth] Error checking session:', err);
         if (mounted) setIsInitializing(false);
       }
     };
 
-    hydrate();
+    checkExistingSession();
 
     return () => {
       mounted = false;
-      if (authSubscription) {
-        try {
-          authSubscription.unsubscribe();
-        } catch (err) {
-          console.warn('[Auth] subscription cleanup failed', err);
-        }
+      try {
+        subscription.unsubscribe();
+      } catch (err) {
+        console.warn('[Auth] subscription cleanup failed', err);
       }
     };
   }, [navigate, location.pathname]);
@@ -213,33 +229,40 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setLoadingState('LOGGING_OUT');
+
+    // Fire-and-forget signOut - DO NOT AWAIT to avoid hanging
+    // Remove scope: 'global' as it's known to hang
+    supabase.auth.signOut().catch((err) => {
+      console.warn('Supabase signOut error (ignored):', err);
+    });
+
+    // Immediately clear state - don't wait for API
+    setUserInfo(null);
+    setHistory([]);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-      }
-    } catch (err) {
-      console.error('Unexpected signOut failure', err);
-    } finally {
-      setUserInfo(null);
-      setHistory([]);
-      try { localStorage.removeItem('supabase.auth.token'); } catch (e) { }
-      setLoadingState('IDLE');
-      navigate('/');
-    }
+      localStorage.removeItem('supabase.auth.token');
+      // Clear any other Supabase storage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) { }
+    setLoadingState('IDLE');
+    navigate('/');
   };
 
   // Protected Route Wrapper
-  const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (isInitializing) {
       return <LoadingOverlay message="Loading..." />;
     }
     if (!userInfo) {
       return <Navigate to="/login" replace />;
     }
-    return children;
+    return <>{children}</>;
   };
 
   return (

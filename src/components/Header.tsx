@@ -13,10 +13,11 @@ interface HeaderProps {
   onNavigate: (view: AppView) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, toggleTheme, currentView, onNavigate }) => {
+const HeaderComponent: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, toggleTheme, currentView, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [credits, setCredits] = useState(0);
+  const [planType, setPlanType] = useState('free');
   const menuRef = useRef<HTMLDivElement>(null);
 
   console.log('[Header Render] UserInfo:', userInfo?.email, 'Credits:', credits);
@@ -43,27 +44,45 @@ export const Header: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, toggl
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch user credits
-  useEffect(() => {
-    let alive = true;
-    const fetchUserCredits = async () => {
-      try {
-        if (!userInfo?.id) {
-          setCredits(0);
-          return;
-        }
-        const userCredits = await getUserCredits(userInfo.id);
-        if (alive) {
-          console.log('[Header] Credits fetched:', userCredits?.credits);
-          setCredits(userCredits?.credits ?? 0);
-        }
-      } catch (err) {
-        console.error('Error fetching credits:', err);
-        if (alive) setCredits(0);
+  // Fetch user credits and plan
+  const fetchUserCredits = async () => {
+    try {
+      if (!userInfo?.id) {
+        setCredits(0);
+        setPlanType('free');
+        return;
       }
+      const userCredits = await getUserCredits(userInfo.id);
+      console.log('[Header] Credits fetched:', userCredits?.credits, 'Plan:', userCredits?.plan_type);
+      setCredits(userCredits?.credits ?? 0);
+      setPlanType(userCredits?.plan_type ?? 'free');
+    } catch (err) {
+      console.error('Error fetching credits:', err);
+      setCredits(0);
+      setPlanType('free');
+    }
+  };
+
+  // Debounced credit fetching - prevents multiple rapid calls
+  useEffect(() => {
+    if (!userInfo?.id) {
+      setCredits(0);
+      setPlanType('free');
+      return;
+    }
+    const timeout = setTimeout(fetchUserCredits, 200);
+    return () => clearTimeout(timeout);
+  }, [userInfo?.id]);
+
+  // Listen for credit updates (after purchases)
+  useEffect(() => {
+    const handleCreditsUpdated = () => {
+      console.log('[Header] Credits updated event received');
+      // Debounce the refresh as well
+      setTimeout(fetchUserCredits, 100);
     };
-    fetchUserCredits();
-    return () => { alive = false; };
+    window.addEventListener('creditsUpdated', handleCreditsUpdated);
+    return () => window.removeEventListener('creditsUpdated', handleCreditsUpdated);
   }, [userInfo?.id]);
 
   return (
@@ -182,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, toggl
               >
                 <div className="text-right hidden sm:block group-hover:opacity-80 transition-opacity">
                   <p className="text-sm font-bold text-slate-800 dark:text-white">{userInfo.name}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">Free Plan</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 capitalize">{planType} Plan</p>
                 </div>
                 <div className="relative w-9 h-9">
                   <div className="absolute inset-0 bg-gradient-to-tr from-brand-400 to-brand-600 rounded-full blur opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
@@ -266,3 +285,6 @@ export const Header: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, toggl
     </header>
   );
 };
+
+// Memoize Header to prevent unnecessary re-renders
+export const Header = React.memo(HeaderComponent);

@@ -32,6 +32,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
   const [topupPlans, setTopupPlans] = useState<any[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
 
+  // Success Modal State
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
   // Sync props to state if props change
   useEffect(() => {
     setFormData(userInfo);
@@ -101,17 +105,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
       await initiatePurchase(
         planId,
         () => {
-          // Success callback
-          alert(`Payment successful! Credits added to your account.`);
+          // Success callback - show modal and refresh
+          setSuccessMessage(`Payment successful! Credits from ${planName} have been added to your account.`);
+          setShowSuccessModal(true);
           fetchCreditsAndPlans(); // Refresh credits
+          // Dispatch event for Header to refresh
+          window.dispatchEvent(new CustomEvent('creditsUpdated'));
         },
         (error) => {
           // Failure callback
-          alert(`Payment failed: ${error}`);
+          setSuccessMessage(`Payment failed: ${error}`);
+          setShowSuccessModal(true);
         }
       );
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      setSuccessMessage(`Error: ${error.message}`);
+      setShowSuccessModal(true);
     }
   };
 
@@ -139,6 +148,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
   return (
     <div className="max-w-6xl mx-auto px-4 pt-28 md:pt-40 pb-20 animate-fade-in relative">
       <h1 className="text-3xl font-heading font-bold text-slate-900 dark:text-white mb-8">Account Settings</h1>
+
+      {/* Success/Error Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-neutral-800 text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${successMessage.includes('failed') || successMessage.includes('Error') ? 'bg-red-100 dark:bg-red-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+              {successMessage.includes('failed') || successMessage.includes('Error') ? (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-red-600 dark:text-red-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-green-600 dark:text-green-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              )}
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+              {successMessage.includes('failed') || successMessage.includes('Error') ? 'Payment Failed' : 'Payment Successful!'}
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-8">{successMessage}</p>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-xl transition-all"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
 
       {saveMessage && (
         <div className={`mb-6 p-4 rounded-xl border flex items-center gap-2 ${saveMessage.includes('Failed') ? 'bg-red-50 dark:bg-red-900/20 border-red-200 text-red-600' : 'bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600'}`}>
@@ -309,7 +347,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
 
               <div className="mb-6">
                 <p className="text-sm text-slate-500 dark:text-neutral-400 mb-1">Current Plan</p>
-                <p className="text-2xl font-heading font-bold text-slate-900 dark:text-white">Free Tier</p>
+                <p className="text-2xl font-heading font-bold text-slate-900 dark:text-white capitalize">{currentPlan} Plan</p>
               </div>
 
               <div className="space-y-3 mb-8">
