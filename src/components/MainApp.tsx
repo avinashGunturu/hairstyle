@@ -139,30 +139,31 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
     const analyzeImage = async (file: File) => {
         console.log("Starting analyzeImage with file:", file.name);
         setLoadingState(LoadingState.ANALYZING);
+
         try {
-            // Convert file to base64 for API
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onloadend = async () => {
-                const base64Image = reader.result as string;
-                console.log("Image converted to base64, calling API...");
-                try {
-                    const result = await analyzeFaceAndSuggestStyles(base64Image, sessionUserInfo?.gender || 'male');
-                    console.log("Analysis result:", result);
-                    setAnalysis(result);
-                    setLoadingState(LoadingState.IDLE);
-                    // Set flag to trigger navigation in useEffect after state updates
-                    console.log("Analysis complete, setting navigation flag...");
-                    setShouldNavigateToSuggestions(true);
-                } catch (apiError: any) {
-                    console.error("API Error during analysis:", apiError);
-                    throw apiError;
-                }
-            };
+            // Convert file to base64 using Promise wrapper
+            const base64Image = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = () => reject(new Error("Failed to read image file"));
+                reader.readAsDataURL(file);
+            });
+
+            console.log("Image converted to base64, calling API...");
+            const result = await analyzeFaceAndSuggestStyles(base64Image, sessionUserInfo?.gender || 'male');
+            console.log("Analysis result:", result);
+            setAnalysis(result);
+            setLoadingState(LoadingState.IDLE);
+            // Set flag to trigger navigation in useEffect after state updates
+            console.log("Analysis complete, setting navigation flag...");
+            setShouldNavigateToSuggestions(true);
         } catch (err: any) {
             console.error("Analysis failed:", err);
-            setError(err.message || "Failed to analyze image. Please try another photo.");
+            // CRITICAL: Stop loading first
             setLoadingState(LoadingState.IDLE);
+            setError(err.message || "Failed to analyze image. Please try another photo.");
+            // Dispatch global error for critical API failures
+            window.dispatchEvent(new CustomEvent('apiError'));
             setAppStage('UPLOAD'); // Go back on failure
         }
     };
@@ -222,6 +223,8 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
         } catch (err: any) {
             console.error("Generation failed", err);
             setError(err.message || "Failed to generate hairstyle. Please try again.");
+            // Dispatch global error for critical API failures
+            window.dispatchEvent(new CustomEvent('apiError'));
         } finally {
             setLoadingState(LoadingState.IDLE);
         }

@@ -5,18 +5,38 @@ interface UploadAreaProps {
   onImageSelected: (file: File) => void;
 }
 
+// Supported image formats for Gemini API
+const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const SUPPORTED_EXTENSIONS = ['JPG', 'JPEG', 'PNG', 'WebP', 'HEIC'];
+
 export const UploadArea: React.FC<UploadAreaProps> = ({ onImageSelected }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [formatError, setFormatError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle File Input
+  // Handle File Input with format validation
   const handleFile = useCallback((file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      onImageSelected(file);
+    // Clear previous error
+    setFormatError(null);
+
+    if (!file) return;
+
+    // Check if file type is supported
+    if (!SUPPORTED_FORMATS.includes(file.type)) {
+      setFormatError(`Unsupported format! Please upload ${SUPPORTED_EXTENSIONS.join(', ')} images only.`);
+      return;
     }
+
+    // Check file size (max 20MB for Gemini)
+    if (file.size > 20 * 1024 * 1024) {
+      setFormatError('Image too large! Please upload an image under 20MB.');
+      return;
+    }
+
+    onImageSelected(file);
   }, [onImageSelected]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -143,66 +163,89 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onImageSelected }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+    <div className="w-full space-y-4">
+      {/* Format Error Message */}
+      {formatError && (
+        <div className="w-full p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex items-center gap-3 animate-fade-in">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 shrink-0">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span className="text-sm font-medium">{formatError}</span>
+          <button
+            onClick={() => setFormatError(null)}
+            className="ml-auto p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
-      {/* Drag & Drop Zone */}
-      <div
-        className={`order-2 md:order-1 relative w-full h-[350px] rounded-3xl transition-all duration-300 flex flex-col items-center justify-center gap-4 cursor-pointer overflow-hidden group border-2 border-dashed
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* Drag & Drop Zone */}
+        <div
+          className={`order-2 md:order-1 relative w-full h-[350px] rounded-3xl transition-all duration-300 flex flex-col items-center justify-center gap-4 cursor-pointer overflow-hidden group border-2 border-dashed
           ${isDragging
-            ? 'bg-brand-50 border-brand-500 scale-[0.99] dark:bg-brand-900/10'
-            : 'bg-slate-50 border-slate-300 hover:border-brand-400 hover:bg-slate-100 dark:bg-neutral-900/50 dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-brand-500/50'
-          }`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleChange}
-        />
+              ? 'bg-brand-50 border-brand-500 scale-[0.99] dark:bg-brand-900/10'
+              : 'bg-slate-50 border-slate-300 hover:border-brand-400 hover:bg-slate-100 dark:bg-neutral-900/50 dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:border-brand-500/50'
+            }`}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,.heic,.heif"
+            className="hidden"
+            onChange={handleChange}
+          />
 
-        <div className="w-16 h-16 rounded-2xl bg-white dark:bg-neutral-800 shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300 group-hover:shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-slate-400 dark:text-neutral-400 group-hover:text-brand-500 transition-colors">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
+          <div className="w-16 h-16 rounded-2xl bg-white dark:bg-neutral-800 shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300 group-hover:shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-slate-400 dark:text-neutral-400 group-hover:text-brand-500 transition-colors">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+          </div>
+
+          <div className="text-center px-6">
+            <p className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+              Upload Image
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Drag & drop or click to browse
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+              Supports: {SUPPORTED_EXTENSIONS.join(', ')} (max 20MB)
+            </p>
+          </div>
         </div>
 
-        <div className="text-center px-6">
-          <p className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-            Upload Image
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Drag & drop or click to browse
-          </p>
+        {/* Camera Button Zone */}
+        <div
+          onClick={startCamera}
+          className="order-1 md:order-2 relative w-full h-[350px] rounded-3xl bg-slate-50 dark:bg-neutral-900/50 border-2 border-dashed border-slate-300 dark:border-neutral-700 hover:border-brand-400 dark:hover:border-brand-500/50 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-all duration-300 flex flex-col items-center justify-center gap-4 cursor-pointer group"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-white dark:bg-neutral-800 shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300 group-hover:shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-slate-400 dark:text-neutral-400 group-hover:text-brand-500 transition-colors">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+            </svg>
+          </div>
+
+          <div className="text-center px-6">
+            <p className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+              Open Camera
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Take a photo instantly
+            </p>
+          </div>
         </div>
+
       </div>
-
-      {/* Camera Button Zone */}
-      <div
-        onClick={startCamera}
-        className="order-1 md:order-2 relative w-full h-[350px] rounded-3xl bg-slate-50 dark:bg-neutral-900/50 border-2 border-dashed border-slate-300 dark:border-neutral-700 hover:border-brand-400 dark:hover:border-brand-500/50 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-all duration-300 flex flex-col items-center justify-center gap-4 cursor-pointer group"
-      >
-        <div className="w-16 h-16 rounded-2xl bg-white dark:bg-neutral-800 shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300 group-hover:shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-slate-400 dark:text-neutral-400 group-hover:text-brand-500 transition-colors">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-          </svg>
-        </div>
-
-        <div className="text-center px-6">
-          <p className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-            Open Camera
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Take a photo instantly
-          </p>
-        </div>
-      </div>
-
     </div>
   );
 };

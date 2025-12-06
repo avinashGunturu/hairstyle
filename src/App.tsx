@@ -19,6 +19,7 @@ import { getUserHistory } from './services/historyService';
 import { UserInfo, HistoryItem, AppView } from './types';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ErrorBanner } from './components/ErrorBanner';
+import { GlobalErrorModal } from './components/GlobalErrorModal';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ const App: React.FC = () => {
   const [loadingState, setLoadingState] = useState<'IDLE' | 'LOGGING_OUT'>('IDLE');
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showGlobalErrorModal, setShowGlobalErrorModal] = useState(false);
 
   // Map Routes to AppView for Header highlighting
   const getCurrentView = (): AppView => {
@@ -71,6 +73,15 @@ const App: React.FC = () => {
   };
 
   const currentView = getCurrentView();
+
+  // Listen for global API errors from anywhere in the app
+  useEffect(() => {
+    const handleApiError = () => {
+      setShowGlobalErrorModal(true);
+    };
+    window.addEventListener('apiError', handleApiError);
+    return () => window.removeEventListener('apiError', handleApiError);
+  }, []);
 
   // Supabase Auth Listener - Single source of truth
   useEffect(() => {
@@ -286,8 +297,22 @@ const App: React.FC = () => {
         onNavigate={handleNavigate}
       />
 
-      {/* GLOBAL ERROR BANNER */}
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+      {/* GLOBAL ERROR BANNER (for minor errors) */}
+      {error && !showGlobalErrorModal && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+      {/* GLOBAL ERROR MODAL (for API failures) */}
+      <GlobalErrorModal
+        isOpen={showGlobalErrorModal}
+        onClose={() => {
+          setShowGlobalErrorModal(false);
+          setError(null);
+        }}
+        onGoHome={() => {
+          setShowGlobalErrorModal(false);
+          setError(null);
+          navigate('/');
+        }}
+      />
 
       <main className="relative z-10 flex-grow max-w-full mx-auto w-full">
         <Routes>
