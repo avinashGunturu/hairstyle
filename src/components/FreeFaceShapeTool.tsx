@@ -24,6 +24,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
     const [apiError, setApiError] = useState<string | null>(null);
     const [currentLogId, setCurrentLogId] = useState<string | null>(null);
     const [showLimitModal, setShowLimitModal] = useState(false);
+    const [isUser, setIsUser] = useState<boolean | null>(null);
 
     const calculateAge = (dobString: string): string => {
         if (!dobString) return '';
@@ -54,10 +55,14 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log("validateForm", validateForm());
+
         if (validateForm()) {
             // Check usage limit before proceeding
             const usageCount = parseInt(localStorage.getItem('free_tool_usage_count') || '0', 10);
+            console.log("usageCount", usageCount);
             const { data: { session } } = await supabase.auth.getSession();
+            console.log("session", session);
 
             if (!session && usageCount >= MAX_FREE_USES) {
                 setShowLimitModal(true);
@@ -68,7 +73,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
             try {
                 const age = formData.dob ? calculateAge(formData.dob) : undefined;
                 const user = session?.user;
-
+                setIsUser(user ? true : false);
                 console.log("User:", user);
 
                 const initialLog = {
@@ -98,9 +103,16 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
         }
     };
 
-    const handleImageSelect = (base64: string) => {
-        setImage(base64);
-        analyzeImage(base64);
+    const handleImageSelect = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (e.target?.result) {
+                const base64 = e.target.result as string;
+                setImage(base64);
+                analyzeImage(base64);
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     const analyzeImage = async (base64: string) => {
@@ -412,7 +424,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
                                             Knowing your shape is just the start. See how you look with the perfect haircut designed for <span className="font-bold text-slate-900 dark:text-white">{result.shape}</span> faces.
                                         </p>
                                         <button
-                                            onClick={() => onNavigate('SIGNUP')}
+                                            onClick={() => isUser ? onNavigate('APP') : onNavigate('SIGNUP')}
                                             className="w-full py-4 px-8 bg-gradient-to-r from-brand-600 to-blue-600 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 hover:shadow-brand-500/40 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3 text-lg h-auto min-h-[3.5rem] whitespace-normal leading-tight"
                                         >
                                             <span className="flex-1">Visualize Hairstyles for {result.shape} Face</span>
