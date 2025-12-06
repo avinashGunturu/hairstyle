@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserInfo, HistoryItem, AppView } from '../types';
+import { getUserCredits } from '../services/creditService';
 
 interface DashboardHomeProps {
   userInfo: UserInfo;
@@ -11,6 +12,41 @@ interface DashboardHomeProps {
 
 export const DashboardHome: React.FC<DashboardHomeProps> = ({ userInfo, history, onStartNew, onNavigate }) => {
   const recentItems = history.slice(0, 5);
+  const [credits, setCredits] = useState<number>(0);
+  const [planType, setPlanType] = useState<string>('free');
+  const [isLoadingCredits, setIsLoadingCredits] = useState(true);
+
+  // Fetch credits on mount
+  useEffect(() => {
+    const fetchCredits = async () => {
+      if (userInfo?.id) {
+        try {
+          const userCredits = await getUserCredits(userInfo.id);
+          setCredits(userCredits?.credits ?? 0);
+          setPlanType(userCredits?.plan_type ?? 'free');
+        } catch (err) {
+          console.error('Error fetching credits:', err);
+        } finally {
+          setIsLoadingCredits(false);
+        }
+      }
+    };
+    const timeout = setTimeout(fetchCredits, 100);
+    return () => clearTimeout(timeout);
+  }, [userInfo?.id]);
+
+  // Listen for credit updates
+  useEffect(() => {
+    const handleCreditsUpdated = async () => {
+      if (userInfo?.id) {
+        const userCredits = await getUserCredits(userInfo.id);
+        setCredits(userCredits?.credits ?? 0);
+        setPlanType(userCredits?.plan_type ?? 'free');
+      }
+    };
+    window.addEventListener('creditsUpdated', handleCreditsUpdated);
+    return () => window.removeEventListener('creditsUpdated', handleCreditsUpdated);
+  }, [userInfo?.id]);
 
   return (
     <div className="w-full max-w-6xl mx-auto my-16 animate-fade-in pt-8">
@@ -85,19 +121,26 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ userInfo, history,
                   <span className="text-xs font-medium px-2 py-1 rounded-md bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 group-hover:bg-brand-500 group-hover:text-white transition-colors">View</span>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800 border border-slate-100 dark:border-neutral-700">
+                <div
+                  className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800 border border-slate-100 dark:border-neutral-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-neutral-700/50 transition-colors"
+                  onClick={() => onNavigate('SETTINGS')}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${credits > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900 dark:text-white">Credits</p>
-                      <p className="text-xs text-slate-500">Unlimited (Free)</p>
+                      <p className="text-xs text-slate-500">
+                        {isLoadingCredits ? 'Loading...' : `${credits} available`}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-xs font-medium px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300">Active</span>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-md capitalize ${credits > 0 ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'}`}>
+                    {planType}
+                  </span>
                 </div>
               </div>
             </div>
