@@ -105,141 +105,114 @@ const App: React.FC = () => {
     return () => window.removeEventListener('apiError', handleApiError);
   }, []);
 
-  // Supabase Auth Listener - Single source of truth
+  // Supabase Auth Listener - Single source of truth (clean + stable)
   useEffect(() => {
     let mounted = true;
-    console.log('[Auth] Setting up auth listener');
+    console.log("[Auth] Setting up auth listener");
 
-    // Check for OAuth errors in URL (both query params and hash)
-    const checkForOAuthErrors = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+    // --- 1) Check OAuth errors in URL ---
+    const url = new URL(window.location.href);
+    const error = url.searchParams.get("error") || url.hash.includes("error");
+    const errorDescription =
+      url.searchParams.get("error_description") ||
+      url.hash.includes("error_description");
 
-      const error = urlParams.get('error') || hashParams.get('error');
-      const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
-
-      if (error === 'access_denied') {
-        const message = errorDescription || 'Access was denied. Please try again or use a different sign-in method.';
-        setError(message);
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return true;
-      }
-      return false;
-    };
-
-    // Check for errors first
-    if (checkForOAuthErrors()) {
+    if (error === "access_denied") {
+      setError(
+        errorDescription ||
+        "Access was denied. Please try again or use a different sign-in method."
+      );
+      window.history.replaceState({}, document.title, window.location.pathname);
       setIsInitializing(false);
       return;
     }
 
-    // Track last session to prevent duplicate processing (StrictMode causes double fires)
-    let lastSessionJson = '';
+    // --- 2) Main Auth Listener (only this is needed) ---
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("[Auth Event]:", event, session ? "session exists" : "no session", session);
 
-    // Set up auth listener FIRST to catch INITIAL_SESSION
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Deduplicate: skip if session is identical to last one
-      const sessionJson = JSON.stringify(session?.user?.id || null);
-      if (sessionJson === lastSessionJson && event !== 'SIGNED_OUT') {
-        console.log('[Auth] Skipping duplicate event:', event);
-        return;
-      }
-      lastSessionJson = sessionJson;
+        // --- SIGNED OUT ---
+        if (event === "SIGNED_OUT") {
+          if (!mounted) return;
 
-      console.log('[Auth] event', event, 'session:', !!session);
-
-      if (event === 'SIGNED_OUT') {
-        if (mounted) {
           setUserInfo(null);
           setHistory([]);
           setIsInitializing(false);
-          // Redirect if on protected route
-          if (['/app', '/settings', '/history'].includes(location.pathname)) {
-            navigate('/login');
+
+          // Use window.location for current path (not stale)
+          const currentPath = window.location.pathname;
+          if (["/app", "/settings", "/history"].some(p => currentPath.startsWith(p))) {
+            navigate("/login");
           }
-        }
-        return;
-      }
-
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('[Auth] Token refreshed successfully');
-      }
-
-      if (session?.user && mounted) {
-        const u = session.user;
-        const userData = {
-          id: u.id,
-          name: u.user_metadata?.full_name || 'User',
-          email: u.email || '',
-          gender: u.user_metadata?.gender || 'male',
-          mobile: u.user_metadata?.mobile,
-          dob: u.user_metadata?.dob,
-        };
-        setUserInfo(userData);
-
-        // Fetch history
-        try {
-          const dbHistory = await getUserHistory(u.id);
-          const formattedHistory: HistoryItem[] = dbHistory.map((item: any) => ({
-            id: item.id,
-            timestamp: new Date(item.created_at).getTime(),
-            customerName: u.user_metadata?.full_name || 'User',
-            styleName: item.style_name,
-            faceShape: item.face_shape || 'Unknown',
-            originalImage: '',
-            generatedImage: '',
-            gender: item.gender || u.user_metadata?.gender || 'male'
-          }));
-          if (mounted) setHistory(formattedHistory);
-        } catch (err) {
-          console.error('[Auth] Error fetching history:', err);
+          return;
         }
 
-        // Redirect logic for auth events
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        // --- SIGNED IN or SESSION RESTORED ---
+        if (session?.user) {
+          const u = session.user;
+          const userData = {
+            id: u?.id,
+            name: u?.user_metadata?.full_name || "User",
+            email: u?.email || "",
+            gender: u?.user_metadata?.gender || "male",
+            mobile: u?.user_metadata?.mobile,
+            dob: u?.user_metadata?.dob,
+          };
+
+          console.log("[Auth] User signed in:", userData.email);
+
+          if (mounted) {
+            setUserInfo(userData);
+            setIsInitializing(false);
+          }
+
+          // REDIRECT FIRST before loading history (so user doesn't wait)
+          const currentPath = window.location.pathname;
+          console.log("[Auth] Current path:", currentPath);
+          if (["/login", "/signup"].includes(currentPath)) {
+            console.log("[Auth] Redirecting to /app");
+            navigate("/app");
+          }
+
+          // Load History in background (don't block redirect)
+          getUserHistory(u?.id).then(dbHistory => {
+            if (mounted) {
+              setHistory(
+                dbHistory && dbHistory?.length > 0 ? dbHistory?.map((item: any) => ({
+                  id: item.id,
+                  timestamp: new Date(item.created_at).getTime(),
+                  customerName: userData.name,
+                  styleName: item.style_name,
+                  faceShape: item.face_shape || "Unknown",
+                  originalImage: "",
+                  generatedImage: "",
+                  gender: item.gender || userData.gender,
+                })) : []
+              );
+            }
+          }).catch(err => {
+            console.error("[Auth] Error fetching history:", err);
+          });
+
+          return;
+        }
+
+        // --- INITIAL LOAD BUT NO SESSION ---
+        if (event === "INITIAL_SESSION" && !session) {
           if (mounted) setIsInitializing(false);
-          // If on login/signup, go to app
-          if (['/login', '/signup'].includes(location.pathname)) {
-            navigate('/app');
-          }
         }
-      } else if (event === 'INITIAL_SESSION' && !session) {
-        // No session on initial load
-        if (mounted) setIsInitializing(false);
       }
-    });
-
-    // Also call getSession for cases where listener might not fire
-    const checkExistingSession = async () => {
-      try {
-        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-        if (sessionErr) {
-          console.warn('[Auth] getSession error:', sessionErr);
-        }
-        // If no session and still initializing after a brief delay, stop initializing
-        if (!sessionData?.session && mounted) {
-          setTimeout(() => {
-            if (mounted) setIsInitializing(false);
-          }, 500);
-        }
-      } catch (err) {
-        console.error('[Auth] Error checking session:', err);
-        if (mounted) setIsInitializing(false);
-      }
-    };
-
-    checkExistingSession();
+    );
 
     return () => {
       mounted = false;
       try {
         subscription.unsubscribe();
-      } catch (err) {
-        console.warn('[Auth] subscription cleanup failed', err);
-      }
+      } catch { }
     };
-  }, [navigate, location.pathname]);
+  }, [navigate]); // Only depend on navigate, not location
+
 
   // Handle Navigation Wrapper for legacy components
   const handleNavigate = (view: AppView) => {

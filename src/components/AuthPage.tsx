@@ -82,13 +82,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView, onSuccess, onNa
 
     try {
       if (isLogin) {
-        // Supabase Login
+        // Supabase Login - auth listener in App.tsx will handle redirect
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        onSuccess();
+        // Don't call onSuccess() - App.tsx auth listener will redirect to /app
+        // Just stop loading, the onAuthStateChange will handle navigation
       } else {
         // Supabase Signup
         const { error } = await supabase.auth.signUp({
@@ -98,13 +99,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialView, onSuccess, onNa
             data: {
               full_name: name,
               mobile: mobile,
-              // Default preferences can be set here if needed
             },
           },
         });
         if (error) throw error;
-        // Check if email confirmation is required by Supabase settings
-        // If auto-confirm is off, user might need to check email.
+        // Show confirmation modal for email verification
         setShowConfirmation(true);
       }
     } catch (err: any) {
