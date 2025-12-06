@@ -10,7 +10,7 @@ interface FreeFaceShapeToolProps {
 }
 
 export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate }) => {
-    const MAX_FREE_USES = 1;
+    const MAX_FREE_USES = 5;
     const [step, setStep] = useState<'FORM' | 'UPLOAD' | 'ANALYZING' | 'RESULT'>('FORM');
     const [formData, setFormData] = useState({
         name: '',
@@ -25,6 +25,20 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
     const [currentLogId, setCurrentLogId] = useState<string | null>(null);
     const [showLimitModal, setShowLimitModal] = useState(false);
     const [isUser, setIsUser] = useState<boolean | null>(null);
+    const [session, setSession] = useState(null);
+
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data }) => {
+            setSession(data.session);
+        });
+
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
+
+        return () => listener.subscription.unsubscribe();
+    }, []);
 
     const calculateAge = (dobString: string): string => {
         if (!dobString) return '';
@@ -61,12 +75,19 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
             // Check usage limit before proceeding
             const usageCount = parseInt(localStorage.getItem('free_tool_usage_count') || '0', 10);
             console.log("usageCount", usageCount);
-            const { data: { session } } = await supabase.auth.getSession();
-            console.log("session", session);
+            // const { data: { session } } = await supabase.auth.getSession();
+            console.log("session", session, !session);
 
-            if (!session && usageCount >= MAX_FREE_USES) {
-                setShowLimitModal(true);
-                return;
+            // if (!session && usageCount >= MAX_FREE_USES) {
+            //     setShowLimitModal(true);
+            //     return;
+            // }
+
+            if (!session) {
+                if (usageCount >= MAX_FREE_USES) {
+                    setShowLimitModal(true);
+                    return;
+                }
             }
 
             // Create initial log entry
