@@ -68,11 +68,11 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate,
 
         // Only redirect to dashboard if we are in DASHBOARD stage and not already there
         // AND we are not in a valid sub-route flow like suggestions
-        if (appStage === 'DASHBOARD' && (location.pathname !== '/app' || location.pathname !== '/app/suggestions')) {
+        if (appStage === 'DASHBOARD' && location.pathname !== '/app' && location.pathname !== '/app/suggestions') {
             console.log("Redirecting to /app because stage is DASHBOARD");
             navigate('/app');
         }
-    }, [appStage, navigate, location.pathname]);
+    }, [appStage]);
 
     // Handle direct access to /app/suggestions
     useEffect(() => {
