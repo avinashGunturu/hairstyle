@@ -27,6 +27,7 @@ export interface HairstyleSuggestion {
   description: string;
   reason: string;
   stylingAdvice: string; // Beard for men, Brows/Lashes for women
+  hairstyleImage?: string; // Optional: Image URL from database
 }
 
 export interface FaceAnalysis {

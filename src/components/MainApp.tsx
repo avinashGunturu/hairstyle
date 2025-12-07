@@ -6,7 +6,8 @@ import { UploadArea } from './UploadArea';
 import { LoadingOverlay } from './LoadingOverlay';
 import { ErrorBanner } from './ErrorBanner';
 import { UserInfo, HistoryItem, AppView, FaceAnalysis } from '../types';
-import { analyzeFaceAndSuggestStyles } from '../services/geminiService';
+import { detectFaceShape } from '../services/geminiService';
+import { getHairstylesByFaceShape } from '../services/hairstyleService';
 import { saveSession } from '../services/sessionService';
 
 interface MainAppProps {
@@ -113,10 +114,26 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate 
                 reader.readAsDataURL(file);
             });
 
-            const result = await analyzeFaceAndSuggestStyles(base64Image, sessionUserInfo?.gender || 'male');
+            const gender = sessionUserInfo?.gender || 'male';
+
+            // Step 1: Detect face shape using Gemini AI
+            console.log('[MainApp] Detecting face shape...');
+            const faceShapeResult = await detectFaceShape(base64Image, gender);
+            console.log('[MainApp] Detected face shape:', faceShapeResult.shape);
+
+            // Step 2: Query database for hairstyles matching face shape and gender
+            console.log('[MainApp] Fetching hairstyles from database...');
+            const genderForDb = gender === 'male' ? 'Male' : 'Female';
+            const suggestions = await getHairstylesByFaceShape(faceShapeResult.shape, genderForDb, 5);
+            console.log('[MainApp] Found', suggestions.length, 'hairstyles');
+
+            // Step 3: Build FaceAnalysis object
+            const result: FaceAnalysis = {
+                faceShape: faceShapeResult.shape,
+                suggestions: suggestions
+            };
 
             // Save session to local storage for persistence
-            const gender = sessionUserInfo?.gender || 'male';
             const sessionId = saveSession(result, base64Image, gender);
 
             setAnalysis(result);

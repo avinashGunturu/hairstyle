@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaceAnalysis, HairstyleSuggestion, Gender } from '../types';
-import { generateHairstylePreview } from '../services/geminiService';
+// REMOVED: generateHairstylePreview - now using hairstyleImage from database
 
 interface SuggestionPanelProps {
   analysis: FaceAnalysis;
@@ -44,23 +44,20 @@ const SuggestionModal: React.FC<{
 
   useEffect(() => {
     if (isOpen && suggestion) {
-      // Reset state
-      if (suggestion.previewUrl) {
+      // Use hairstyleImage from database if available
+      if (suggestion.hairstyleImage) {
+        setPreviewUrl(suggestion.hairstyleImage);
+        setLoading(false);
+      } else if (suggestion.previewUrl) {
         setPreviewUrl(suggestion.previewUrl);
         setLoading(false);
       } else {
-        // If no preview URL passed (e.g. from Top 20), load it now
+        // No image available - show placeholder
         setPreviewUrl(null);
-        setLoading(true);
-        generateHairstylePreview(suggestion.name, suggestion.description, gender)
-          .then((url) => {
-            setPreviewUrl(url);
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
+        setLoading(false);
       }
     }
-  }, [isOpen, suggestion, gender]);
+  }, [isOpen, suggestion]);
 
   if (!isOpen || !suggestion) return null;
 
@@ -165,7 +162,7 @@ const SuggestionModal: React.FC<{
                     </svg>
                   </div>
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                    {gender === 'male' ? 'Beard & Facial Hair' : 'Eyebrow & Lash Styling'}
+                    {gender === 'male' ? 'Styling Advice' : 'Styling Advice'}
                   </h3>
                 </div>
                 <div className="bg-slate-50 dark:bg-neutral-800 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-neutral-700 shadow-sm">
@@ -205,21 +202,8 @@ const SuggestionCard: React.FC<{
   suggestion: ExtendedSuggestion;
   onClick: () => void;
 }> = ({ suggestion, onClick }) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  // Lazy load the visual preview for the card background
-  useEffect(() => {
-    if (!previewUrl && !loading) {
-      setLoading(true);
-      generateHairstylePreview(suggestion.name, "Hairstyle concept", 'male')
-        .then(url => {
-          setPreviewUrl(url);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
-    }
-  }, [suggestion.name]);
+  // Use hairstyleImage from database directly - no API calls
+  const previewUrl = suggestion.hairstyleImage || null;
 
   return (
     <div
@@ -228,11 +212,7 @@ const SuggestionCard: React.FC<{
     >
       {/* Image / Placeholder with Zoom Effect */}
       <div className="w-full h-full relative overflow-hidden">
-        {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-neutral-800">
-            <div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin"></div>
-          </div>
-        ) : previewUrl ? (
+        {previewUrl ? (
           <img
             src={previewUrl}
             alt={suggestion.name}
