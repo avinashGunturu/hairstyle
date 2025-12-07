@@ -119,6 +119,10 @@ export const detectFaceShape = async (base64Image: string, gender: Gender, age?:
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
                 systemInstruction: "You are a facial geometry expert. Analyze the uploaded face strictly for face shape classification. Do not provide styling advice.",
+                thinkingConfig: {
+                    includeThoughts: false, // Do not return thoughts
+                    thinkingBudget: 0       // Set budget to 0 to prevent thinking tokens
+                }
             },
         });
 
