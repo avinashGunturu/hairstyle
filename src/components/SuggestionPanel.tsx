@@ -108,7 +108,7 @@ const SuggestionModal: React.FC<{
             <img
               src={previewUrl}
               alt={suggestion.name}
-              className="w-full h-full object-contain lg:object-cover"
+              className="w-full h-full object-contain"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-neutral-200 dark:bg-neutral-800">

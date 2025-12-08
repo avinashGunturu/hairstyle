@@ -77,8 +77,8 @@ const BeforeAfterDemo = () => {
 
   // --- REPLACE THESE URLS WITH THE IMAGES YOU UPLOADED ---
   // Ensure both images are of the SAME person for the best effect.
-  const beforeImage = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80"; // Young Man (Neutral/Before)
-  const afterImage = "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=800&q=80";   // Same/Similar Man (Styled/After)
+  const beforeImage = "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_before.png"; // Young Man (Neutral/Before)
+  const afterImage = "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_after.png";   // Same/Similar Man (Styled/After)
 
   return (
     <div className="relative w-full max-w-md mx-auto">
