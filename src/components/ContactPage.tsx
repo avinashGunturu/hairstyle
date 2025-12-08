@@ -7,6 +7,14 @@ interface ContactPageProps {
    onNavigate: (view: AppView) => void;
 }
 
+interface FormErrors {
+   firstName?: string;
+   lastName?: string;
+   email?: string;
+   mobile?: string;
+   message?: string;
+}
+
 export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
    const [formData, setFormData] = useState({
       firstName: '',
@@ -16,12 +24,90 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
       topic: 'General Inquiry',
       message: ''
    });
+   const [errors, setErrors] = useState<FormErrors>({});
+   const [touched, setTouched] = useState<Record<string, boolean>>({});
    const [showSuccessModal, setShowSuccessModal] = useState(false);
    const [submittedData, setSubmittedData] = useState<any>(null);
    const [isSubmitting, setIsSubmitting] = useState(false);
 
+   // Validation functions
+   const validateField = (name: string, value: string): string | undefined => {
+      switch (name) {
+         case 'firstName':
+            if (!value.trim()) return 'First name is required';
+            if (value.trim().length < 2) return 'First name must be at least 2 characters';
+            if (!/^[a-zA-Z\s]+$/.test(value)) return 'First name can only contain letters';
+            return undefined;
+         case 'lastName':
+            if (!value.trim()) return 'Last name is required';
+            if (value.trim().length < 2) return 'Last name must be at least 2 characters';
+            if (!/^[a-zA-Z\s]+$/.test(value)) return 'Last name can only contain letters';
+            return undefined;
+         case 'email':
+            if (!value.trim()) return 'Email address is required';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+            return undefined;
+         case 'mobile':
+            if (value && !/^[+]?[\d\s-]{10,}$/.test(value.replace(/\s/g, '')))
+               return 'Please enter a valid phone number';
+            return undefined;
+         case 'message':
+            if (!value.trim()) return 'Message is required';
+            if (value.trim().length < 10) return 'Message must be at least 10 characters';
+            return undefined;
+         default:
+            return undefined;
+      }
+   };
+
+   const validateForm = (): boolean => {
+      const newErrors: FormErrors = {};
+      newErrors.firstName = validateField('firstName', formData.firstName);
+      newErrors.lastName = validateField('lastName', formData.lastName);
+      newErrors.email = validateField('email', formData.email);
+      newErrors.mobile = validateField('mobile', formData.mobile);
+      newErrors.message = validateField('message', formData.message);
+
+      // Filter out undefined values
+      const filteredErrors = Object.fromEntries(
+         Object.entries(newErrors).filter(([_, v]) => v !== undefined)
+      ) as FormErrors;
+
+      setErrors(filteredErrors);
+      return Object.keys(filteredErrors).length === 0;
+   };
+
+   const handleBlur = (name: string) => {
+      setTouched(prev => ({ ...prev, [name]: true }));
+      const error = validateField(name, formData[name as keyof typeof formData]);
+      setErrors(prev => ({ ...prev, [name]: error }));
+   };
+
+   const handleChange = (name: string, value: string) => {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      // Clear error when user starts typing
+      if (touched[name]) {
+         const error = validateField(name, value);
+         setErrors(prev => ({ ...prev, [name]: error }));
+      }
+   };
+
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+
+      // Mark all fields as touched
+      setTouched({
+         firstName: true,
+         lastName: true,
+         email: true,
+         mobile: true,
+         message: true
+      });
+
+      if (!validateForm()) {
+         return;
+      }
+
       setIsSubmitting(true);
 
       try {
@@ -57,16 +143,39 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
             topic: 'General Inquiry',
             message: ''
          });
+         setErrors({});
+         setTouched({});
       } catch (error) {
          console.error('Error submitting contact form:', error);
-         alert('Failed to send message. Please try again.');
+         setErrors({ message: 'Failed to send message. Please try again.' });
       } finally {
          setIsSubmitting(false);
       }
    };
 
-   const inputClass = "w-full bg-slate-50 dark:bg-neutral-800/50 border border-slate-200 dark:border-neutral-700 rounded-xl px-5 py-4 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 dark:text-white transition-all placeholder-slate-400 dark:placeholder-neutral-600 text-base";
+   const getInputClass = (fieldName: string) => {
+      const baseClass = "w-full bg-slate-50 dark:bg-neutral-800/50 border rounded-xl px-5 py-4 outline-none focus:ring-4 transition-all placeholder-slate-400 dark:placeholder-neutral-600 text-base dark:text-white";
+      const hasError = touched[fieldName] && errors[fieldName as keyof FormErrors];
+
+      if (hasError) {
+         return `${baseClass} border-red-400 dark:border-red-500 focus:ring-red-500/10 focus:border-red-500`;
+      }
+      return `${baseClass} border-slate-200 dark:border-neutral-700 focus:ring-brand-500/10 focus:border-brand-500`;
+   };
+
    const labelClass = "block text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase mb-2 ml-1 tracking-wide";
+
+   const ErrorMessage = ({ field }: { field: keyof FormErrors }) => {
+      if (!touched[field] || !errors[field]) return null;
+      return (
+         <div className="flex items-center gap-1.5 mt-2 text-red-500 dark:text-red-400 text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0">
+               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <span>{errors[field]}</span>
+         </div>
+      );
+   };
 
    return (
       <div className="animate-fade-in pt-28 md:pt-40 pb-20 min-h-screen bg-slate-50 dark:bg-neutral-950">
@@ -164,50 +273,55 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                         <div className="space-y-6">
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                               <div>
-                                 <label className={labelClass}>First Name</label>
+                                 <label className={labelClass}>First Name <span className="text-red-500">*</span></label>
                                  <input
                                     type="text"
-                                    required
-                                    className={inputClass}
+                                    className={getInputClass('firstName')}
                                     placeholder="e.g. Aditi"
                                     value={formData.firstName}
-                                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                    onChange={(e) => handleChange('firstName', e.target.value)}
+                                    onBlur={() => handleBlur('firstName')}
                                  />
+                                 <ErrorMessage field="firstName" />
                               </div>
                               <div>
-                                 <label className={labelClass}>Last Name</label>
+                                 <label className={labelClass}>Last Name <span className="text-red-500">*</span></label>
                                  <input
                                     type="text"
-                                    required
-                                    className={inputClass}
+                                    className={getInputClass('lastName')}
                                     placeholder="e.g. Rao"
                                     value={formData.lastName}
-                                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                    onChange={(e) => handleChange('lastName', e.target.value)}
+                                    onBlur={() => handleBlur('lastName')}
                                  />
+                                 <ErrorMessage field="lastName" />
                               </div>
                            </div>
 
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                               <div>
-                                 <label className={labelClass}>Email Address</label>
+                                 <label className={labelClass}>Email Address <span className="text-red-500">*</span></label>
                                  <input
                                     type="email"
-                                    required
-                                    className={inputClass}
+                                    className={getInputClass('email')}
                                     placeholder="name@example.com"
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    onChange={(e) => handleChange('email', e.target.value)}
+                                    onBlur={() => handleBlur('email')}
                                  />
+                                 <ErrorMessage field="email" />
                               </div>
                               <div>
                                  <label className={labelClass}>Mobile Number</label>
                                  <input
                                     type="tel"
-                                    className={inputClass}
+                                    className={getInputClass('mobile')}
                                     placeholder="+91 98765 43210"
                                     value={formData.mobile}
-                                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                                    onChange={(e) => handleChange('mobile', e.target.value)}
+                                    onBlur={() => handleBlur('mobile')}
                                  />
+                                 <ErrorMessage field="mobile" />
                               </div>
                            </div>
 
@@ -215,9 +329,9 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                               <label className={labelClass}>Topic</label>
                               <div className="relative">
                                  <select
-                                    className={`${inputClass} appearance-none cursor-pointer`}
+                                    className={`${getInputClass('topic')} appearance-none cursor-pointer`}
                                     value={formData.topic}
-                                    onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                                    onChange={(e) => handleChange('topic', e.target.value)}
                                  >
                                     <option>General Inquiry</option>
                                     <option>Technical Support</option>
@@ -233,15 +347,16 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                            </div>
 
                            <div>
-                              <label className={labelClass}>Message</label>
+                              <label className={labelClass}>Message <span className="text-red-500">*</span></label>
                               <textarea
                                  rows={5}
-                                 required
-                                 className={`${inputClass} resize-none`}
+                                 className={`${getInputClass('message')} resize-none`}
                                  placeholder="Tell us how we can help..."
                                  value={formData.message}
-                                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                                 onChange={(e) => handleChange('message', e.target.value)}
+                                 onBlur={() => handleBlur('message')}
                               />
+                              <ErrorMessage field="message" />
                            </div>
 
                            <button
