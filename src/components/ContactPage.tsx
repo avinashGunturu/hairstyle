@@ -113,12 +113,12 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                            </div>
                            <div>
                               <p className="text-sm text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">Visit Us</p>
-                              <p className="text-lg font-semibold text-slate-900 dark:text-white">123 Innovation Drive</p>
-                              <p className="text-sm text-slate-500 mt-1">Tech City, TC 560001</p>
+                              <p className="text-lg font-semibold text-slate-900 dark:text-white">Q city,Financial District</p>
+                              <p className="text-sm text-slate-500 mt-1">500032, Hyderabad</p>
                            </div>
                         </div>
 
-                        <div className="flex items-start gap-5 group">
+                        {/* <div className="flex items-start gap-5 group">
                            <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
@@ -129,7 +129,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                               <p className="text-lg font-semibold text-slate-900 dark:text-white">+91 (800) 123-4567</p>
                               <p className="text-sm text-slate-500 mt-1">Mon-Fri, 9am - 6pm IST</p>
                            </div>
-                        </div>
+                        </div> */}
                      </div>
                   </div>
 
