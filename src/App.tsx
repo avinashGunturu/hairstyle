@@ -81,7 +81,7 @@ const App: React.FC = () => {
     if (path === '/') return 'LANDING';
     if (path === '/login') return 'LOGIN';
     if (path === '/signup') return 'SIGNUP';
-    if (path === '/app') return 'APP';
+    if (path.startsWith('/app')) return 'APP'; // Use startsWith to handle /app/suggestions/* etc.
     if (path === '/settings') return 'SETTINGS';
     if (path === '/history') return 'HISTORY';
     if (path === '/about') return 'ABOUT';
