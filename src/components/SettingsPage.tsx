@@ -41,6 +41,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
     setFormData(userInfo);
   }, [userInfo]);
 
+  // Load preferences from Supabase on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.preferences) {
+          setPreferences(prev => ({
+            ...prev,
+            ...user.user_metadata.preferences
+          }));
+        }
+      } catch (err) {
+        console.error('Error loading preferences:', err);
+      }
+    };
+    loadPreferences();
+  }, []);
+
   // Fetch user credits and topup plans
   useEffect(() => {
     fetchCreditsAndPlans();
@@ -96,8 +114,32 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
     }
   };
 
-  const togglePreference = (key: keyof typeof preferences) => {
-    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+  const togglePreference = async (key: keyof typeof preferences) => {
+    const newValue = !preferences[key];
+    setPreferences(prev => ({ ...prev, [key]: newValue }));
+
+    // Save preference to Supabase user_metadata
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          preferences: {
+            ...preferences,
+            [key]: newValue
+          }
+        }
+      });
+      if (error) {
+        console.error('Error saving preference:', error);
+        // Revert on error
+        setPreferences(prev => ({ ...prev, [key]: !newValue }));
+      } else {
+        console.log(`[Settings] Preference ${String(key)} saved:`, newValue);
+      }
+    } catch (err) {
+      console.error('Error saving preference:', err);
+      // Revert on error
+      setPreferences(prev => ({ ...prev, [key]: !newValue }));
+    }
   };
 
   const handleBuyAddon = async (planId: string, planName: string) => {
@@ -309,8 +351,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
               <div className="space-y-4">
                 {[
                   { key: 'marketingEmails', label: 'Marketing Emails', desc: 'Receive updates about new styles and exclusive offers.' },
-                  { key: 'highQualityPreviews', label: 'High Quality Previews', desc: 'Always generate maximum resolution previews (uses more data).' },
-                  { key: 'publicProfile', label: 'Public Profile', desc: 'Allow others to see your shared transformation results.' }
+                  // { key: 'highQualityPreviews', label: 'High Quality Previews', desc: 'Always generate maximum resolution previews (uses more data).' },
+                  // { key: 'publicProfile', label: 'Public Profile', desc: 'Allow others to see your shared transformation results.' }
                 ].map((pref) => (
                   <div key={pref.key} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-100 dark:border-neutral-700">
                     <div>
