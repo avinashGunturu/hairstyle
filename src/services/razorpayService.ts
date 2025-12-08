@@ -160,12 +160,13 @@ async function handlePaymentSuccess(
 
         console.log('Credits added. Updating plan...');
 
-        // Update plan if it's a subscription
-        if (plan.plan_type === 'subscription' && plan.duration_days > 0) {
-            const planUpdateSuccess = await updateUserPlan(userId, plan.plan_name, plan.duration_days);
-            if (!planUpdateSuccess) {
-                console.error('Failed to update user plan details');
-            }
+        // Always update the user's plan type and dates on purchase/upgrade
+        // Use the actual plan name (basic, starter, popular, pro, ultra, etc.)
+        const durationDays = plan.duration_days > 0 ? plan.duration_days : 30; // Default to 30 days if not specified
+        const planName = plan.plan_name || plan.id; // Use plan_name from database
+        const planUpdateSuccess = await updateUserPlan(userId, planName, durationDays);
+        if (!planUpdateSuccess) {
+            console.error('Failed to update user plan details');
         }
 
         console.log('Payment processed successfully');

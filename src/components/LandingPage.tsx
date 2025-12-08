@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AppView } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { initiatePurchase } from '../services/razorpayService';
+import { getUserCredits } from '../services/creditService';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -283,6 +284,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [user, setUser] = useState<any>(null);
 
+  // Payment result modal state
+  const [paymentModal, setPaymentModal] = useState<{ show: boolean; success: boolean; message: string }>({ show: false, success: false, message: '' });
+
   // Gender preference state
   const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('male');
   const [showGenderPopup, setShowGenderPopup] = useState(false);
@@ -317,6 +321,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
     return () => subscription.unsubscribe();
   }, []);
 
+  // User's current plan state
+  const [userPlan, setUserPlan] = useState<string | null>(null);
+
+  // Fetch user's current plan when user changes
+  useEffect(() => {
+    const fetchUserPlan = async () => {
+      if (user?.id) {
+        const credits = await getUserCredits(user.id);
+        setUserPlan(credits?.plan_type || 'free');
+      } else {
+        setUserPlan(null);
+      }
+    };
+    fetchUserPlan();
+  }, [user]);
+
   const handlePlanSelect = async (planId: string) => {
     if (!user) {
       onStart(); // Redirect to login/signup
@@ -324,16 +344,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
     }
 
     // Trigger Razorpay
-    await initiatePurchase(planId, () => {
-      // Success callback - maybe show a toast or redirect
-      // For now, we rely on the modal in initiatePurchase or global state updates
-      // But let's just refresh the page or navigate to settings/dashboard if needed
-      // Actually, initiatePurchase handles the success modal/alert internally or via callback
-      // We can just let the user know or navigate them
-      onNavigate('SETTINGS'); // Navigate to settings to see credits
+    await initiatePurchase(planId, async () => {
+      // Success callback - show modal
+      setPaymentModal({ show: true, success: true, message: 'Your credits have been added successfully!' });
     }, (error) => {
-      console.error("Purchase failed", error);
+      // Failure callback - show modal
+      setPaymentModal({ show: true, success: false, message: error || 'Payment was cancelled or failed.' });
     });
+  };
+
+  // Handle payment modal close
+  const handlePaymentModalClose = () => {
+    const wasSuccess = paymentModal.success;
+    setPaymentModal({ show: false, success: false, message: '' });
+    if (wasSuccess) {
+      window.location.reload();
+    }
   };
 
   // --- Typewriter Effect State ---
@@ -440,6 +466,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
     <div className="overflow-x-hidden">
       {/* Gender Selection Popup */}
       {showGenderPopup && <GenderSelectionPopup onSelect={handleGenderSelect} />}
+
+      {/* Payment Result Modal */}
+      {paymentModal.show && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handlePaymentModalClose}></div>
+          <div className="relative z-10 w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-neutral-800 p-8 animate-scale-in">
+            {/* Icon */}
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${paymentModal.success
+              ? 'bg-green-100 dark:bg-green-900/30'
+              : 'bg-red-100 dark:bg-red-900/30'}`}>
+              {paymentModal.success ? (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-green-600 dark:text-green-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8 text-red-600 dark:text-red-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 className={`text-2xl font-bold text-center mb-3 ${paymentModal.success
+              ? 'text-green-600 dark:text-green-400'
+              : 'text-red-600 dark:text-red-400'}`}>
+              {paymentModal.success ? 'Payment Successful!' : 'Payment Failed'}
+            </h3>
+
+            {/* Message */}
+            <p className="text-slate-600 dark:text-slate-400 text-center mb-6">
+              {paymentModal.message}
+            </p>
+
+            {/* Button */}
+            <button
+              onClick={handlePaymentModalClose}
+              className={`w-full py-3 font-bold rounded-xl transition-all ${paymentModal.success
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900'}`}
+            >
+              {paymentModal.success ? 'Great, Refresh Now!' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* --- HERO SECTION --- */}
       <section
@@ -962,16 +1033,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
                     )}
 
                     <div className="mt-auto">
-                      <button
-                        onClick={() => handlePlanSelect(plan.id)}
-                        className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98]
-                        ${plan.highlight
-                            ? 'bg-gradient-to-r from-brand-600 to-blue-600 text-white hover:from-brand-500 hover:to-blue-500 shadow-brand-500/25 hover:shadow-brand-500/40'
-                            : 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-neutral-700 hover:border-brand-500 hover:text-brand-600 dark:hover:text-white group-hover:border-brand-500/50'
-                          }`}
-                      >
-                        {user ? 'Buy Plan' : 'Get Started'}
-                      </button>
+                      {(() => {
+                        const isCurrentPlan = userPlan && userPlan.toLowerCase() === plan.id.toLowerCase();
+                        const hasPaidPlan = userPlan && userPlan !== 'free';
+
+                        // Determine button text
+                        let buttonText = 'Get Started';
+                        if (user) {
+                          if (isCurrentPlan) {
+                            buttonText = 'Current Plan';
+                          } else if (hasPaidPlan) {
+                            buttonText = 'Upgrade Plan';
+                          } else {
+                            buttonText = 'Buy Plan';
+                          }
+                        }
+
+                        return (
+                          <button
+                            onClick={() => handlePlanSelect(plan.id)}
+                            disabled={!!isCurrentPlan}
+                            className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg
+                            ${isCurrentPlan
+                                ? 'bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border-2 border-slate-200 dark:border-neutral-700'
+                                : plan.highlight
+                                  ? 'bg-gradient-to-r from-brand-600 to-blue-600 text-white hover:from-brand-500 hover:to-blue-500 shadow-brand-500/25 hover:shadow-brand-500/40 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98]'
+                                  : 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-neutral-700 hover:border-brand-500 hover:text-brand-600 dark:hover:text-white group-hover:border-brand-500/50 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98]'
+                              }`}
+                          >
+                            {buttonText}
+                          </button>
+                        );
+                      })()}
 
                       {plan.highlight && (
                         <p className="text-xs text-center text-brand-600 dark:text-brand-400 mt-3 font-medium opacity-80">Most people choose Popular</p>
