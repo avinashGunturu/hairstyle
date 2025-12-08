@@ -40,8 +40,78 @@ const RevealOnScroll: React.FC<{ children: React.ReactNode; delay?: number; clas
   );
 };
 
+// --- Gender Selection Popup Component ---
+const GENDER_STORAGE_KEY = 'landing_gender_preference';
+
+interface GenderSelectionPopupProps {
+  onSelect: (gender: 'male' | 'female') => void;
+}
+
+const GenderSelectionPopup: React.FC<GenderSelectionPopupProps> = ({ onSelect }) => {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
+      <div className="relative bg-white dark:bg-neutral-900 rounded-3xl p-8 md:p-12 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-neutral-800 text-center overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-pink-500/20 to-transparent rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-blue-500/20 to-transparent rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+
+        {/* Icon */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-brand-500 to-blue-600 flex items-center justify-center shadow-lg shadow-brand-500/30">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-white">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+
+        <h2 className="text-2xl md:text-3xl font-heading font-bold text-slate-900 dark:text-white mb-3">
+          Personalize Your Experience
+        </h2>
+        <p className="text-slate-600 dark:text-slate-400 mb-8 text-base md:text-lg">
+          Help us show you the most relevant hairstyle transformations
+        </p>
+
+        {/* Gender Options */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* Male Option */}
+          <button
+            onClick={() => onSelect('male')}
+            className="group relative p-6 rounded-2xl border-2 border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          >
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-blue-600 dark:text-blue-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <span className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Male</span>
+          </button>
+
+          {/* Female Option */}
+          <button
+            onClick={() => onSelect('female')}
+            className="group relative p-6 rounded-2xl border-2 border-slate-200 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800 hover:border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          >
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-pink-600 dark:text-pink-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <span className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">Female</span>
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          You can change this anytime in settings
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // --- Before/After Demo Slider Component ---
-const BeforeAfterDemo = () => {
+interface BeforeAfterDemoProps {
+  gender: 'male' | 'female';
+}
+
+const BeforeAfterDemo: React.FC<BeforeAfterDemoProps> = ({ gender }) => {
   const [sliderPos, setSliderPos] = useState(50);
   const [hasInteracted, setHasInteracted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,10 +145,20 @@ const BeforeAfterDemo = () => {
     }
   };
 
-  // --- REPLACE THESE URLS WITH THE IMAGES YOU UPLOADED ---
-  // Ensure both images are of the SAME person for the best effect.
-  const beforeImage = "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_before.png"; // Young Man (Neutral/Before)
-  const afterImage = "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_after.png";   // Same/Similar Man (Styled/After)
+  // Gender-specific images
+  const images = {
+    male: {
+      before: "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_before.png",
+      after: "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_after.png"
+    },
+    female: {
+      before: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=800&q=80",
+      after: "https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80"
+    }
+  };
+
+  const beforeImage = images[gender].before;
+  const afterImage = images[gender].after;
 
   return (
     <div className="relative w-full max-w-md mx-auto">
@@ -202,6 +282,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [user, setUser] = useState<any>(null);
+
+  // Gender preference state
+  const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('male');
+  const [showGenderPopup, setShowGenderPopup] = useState(false);
+
+  // Check for saved gender preference on mount
+  useEffect(() => {
+    const savedGender = localStorage.getItem(GENDER_STORAGE_KEY);
+    if (savedGender === 'male' || savedGender === 'female') {
+      setSelectedGender(savedGender);
+    } else {
+      // No preference saved, show popup
+      setShowGenderPopup(true);
+    }
+  }, []);
+
+  // Handle gender selection from popup
+  const handleGenderSelect = (gender: 'male' | 'female') => {
+    setSelectedGender(gender);
+    localStorage.setItem(GENDER_STORAGE_KEY, gender);
+    setShowGenderPopup(false);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -336,6 +438,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
 
   return (
     <div className="overflow-x-hidden">
+      {/* Gender Selection Popup */}
+      {showGenderPopup && <GenderSelectionPopup onSelect={handleGenderSelect} />}
+
       {/* --- HERO SECTION --- */}
       <section
         className="relative min-h-screen flex flex-col justify-between overflow-hidden bg-slate-50 dark:bg-neutral-950 transition-colors duration-500"
@@ -443,8 +548,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
           <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 flex justify-center">
             <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6 justify-center transform transition-transform">
               <div className="flex -space-x-4">
-                {[1, 2, 3, 4].map(i => (
-                  <img key={i} src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" className="w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white dark:border-neutral-900 shadow-sm" />
+                {(selectedGender === 'female'
+                  ? [25, 26, 27, 28] // Women avatar IDs
+                  : [11, 12, 13, 14] // Men avatar IDs
+                ).map((avatarId, i) => (
+                  <img key={i} src={`https://i.pravatar.cc/100?img=${avatarId}`} alt="User" className="w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white dark:border-neutral-900 shadow-sm" />
                 ))}
               </div>
               <div className="text-center sm:text-left">
@@ -511,7 +619,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
             <div className="order-1 lg:order-2 relative w-full flex items-center justify-center">
               <div className="absolute top-0 right-0 w-72 h-72 bg-brand-400/20 rounded-full blur-3xl animate-pulse"></div>
               <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-              <BeforeAfterDemo />
+              <BeforeAfterDemo gender={selectedGender} />
             </div>
           </div>
         </div>
@@ -673,7 +781,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
             <RevealOnScroll delay={100}>
               <div className="relative group overflow-hidden rounded-3xl h-[400px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-black z-10 opacity-60 transition-opacity group-hover:opacity-40"></div>
-                <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=800&q=80" alt="Confidence" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <img src={selectedGender === 'female'
+                  ? "https://images.unsplash.com/photo-1488716820095-cbe80883c496?auto=format&fit=crop&w=800&q=80"
+                  : "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=800&q=80"
+                } alt="Confidence" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="relative z-20 p-8 h-full flex flex-col justify-end">
                   <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center mb-4 text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -688,7 +799,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
             <RevealOnScroll delay={200}>
               <div className="relative group overflow-hidden rounded-3xl h-[400px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-brand-900 to-slate-900 z-10 opacity-60 transition-opacity group-hover:opacity-40"></div>
-                <img src="https://images.unsplash.com/photo-1595152772835-219674b2a8a6?auto=format&fit=crop&w=800&q=80" alt="Communication" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <img src={selectedGender === 'female'
+                  ? "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=800&q=80"
+                  : "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?auto=format&fit=crop&w=800&q=80"
+                } alt="Communication" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="relative z-20 p-8 h-full flex flex-col justify-end">
                   <div className="w-12 h-12 bg-brand-500/30 backdrop-blur-md rounded-xl flex items-center justify-center mb-4 text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>
@@ -703,7 +817,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
             <RevealOnScroll delay={300}>
               <div className="relative group overflow-hidden rounded-3xl h-[400px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-slate-900 z-10 opacity-60 transition-opacity group-hover:opacity-40"></div>
-                <img src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=800&q=80" alt="Confidence" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <img src={selectedGender === 'female'
+                  ? "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=800&q=80"
+                  : "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=800&q=80"
+                } alt="Confidence" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="relative z-20 p-8 h-full flex flex-col justify-end">
                   <div className="w-12 h-12 bg-blue-500/30 backdrop-blur-md rounded-xl flex items-center justify-center mb-4 text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>

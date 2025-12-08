@@ -12,18 +12,32 @@ interface SuggestionPanelProps {
   onCustomPrompt: (prompt: string) => void;
 }
 
-const MALE_STYLES = [
+const MALE_STYLES_INTERNATIONAL = [
   "Pompadour", "Undercut", "Quiff", "Buzz Cut", "Crew Cut",
   "High Fade", "Side Part", "Slick Back", "Man Bun", "Faux Hawk",
   "Caesar Cut", "French Crop", "Textured Fringe", "Ivy League", "Comb Over",
   "Modern Mullet", "Dreadlocks", "Short Afro", "Top Knot", "Spiky Texture"
 ];
 
-const FEMALE_STYLES = [
+const MALE_STYLES_INDIAN = [
+  "Classic Side Part", "Low Fade", "Textured Crop", "Medium Length Waves", "Short Back & Sides",
+  "Disconnected Undercut", "Slicked Back Undercut", "Spiky Top", "Messy Fringe", "Taper Fade",
+  "Bollywood Quiff", "Short Curly Top", "Clean Buzz", "Layered Medium", "Textured Pompadour",
+  "Side Swept Bangs", "Executive Contour", "Natural Waves", "Casual Messy", "Modern Indian Cut"
+];
+
+const FEMALE_STYLES_INTERNATIONAL = [
   "Classic Bob", "Pixie Cut", "Long Bob (Lob)", "Beach Waves", "Long Layers",
   "Curtain Bangs", "Shag Cut", "Blunt Cut", "Asymmetrical Bob", "Wolf Cut",
   "French Bob", "Feathered Layers", "Sleek Straight", "Curly Shag", "Box Braids",
   "High Ponytail", "Messy Bun", "Half-Up Half-Down", "Side Swept Bangs", "Boyfriend Bob"
+];
+
+const FEMALE_STYLES_INDIAN = [
+  "Long Layered Cut", "U-Cut with Layers", "Step Cut", "Front Bangs", "Side Swept Layers",
+  "Feather Cut", "Indian Bob", "Medium Length Waves", "Straight Blunt Cut", "Face Framing Layers",
+  "Soft Curls", "Bollywood Waves", "Traditional Long", "Modern Shag", "Wispy Bangs",
+  "Layered with Volume", "Shoulder Length Bob", "Natural Wavy", "Classic Indian Layers", "Textured Ends"
 ];
 
 interface ExtendedSuggestion extends HairstyleSuggestion {
@@ -245,9 +259,19 @@ const SuggestionCard: React.FC<{
 export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gender, originalImage, onSelectStyle, onCustomPrompt }) => {
   const [selectedModalSuggestion, setSelectedModalSuggestion] = useState<ExtendedSuggestion | null>(null);
   const [customText, setCustomText] = useState('');
+  const [styleRegion, setStyleRegion] = useState<'international' | 'indian'>('international');
 
   const suggestions: ExtendedSuggestion[] = analysis.suggestions.map(s => ({ ...s, isCustom: false }));
-  const trendingStyles = gender === 'male' ? MALE_STYLES : FEMALE_STYLES;
+
+  // Get styles based on gender and region
+  const getTrendingStyles = () => {
+    if (gender === 'male') {
+      return styleRegion === 'international' ? MALE_STYLES_INTERNATIONAL : MALE_STYLES_INDIAN;
+    } else {
+      return styleRegion === 'international' ? FEMALE_STYLES_INTERNATIONAL : FEMALE_STYLES_INDIAN;
+    }
+  };
+  const trendingStyles = getTrendingStyles();
 
   const handleCardClick = (suggestion: ExtendedSuggestion) => {
     setSelectedModalSuggestion(suggestion);
@@ -315,13 +339,13 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
                 </svg>
               </div>
               <h3 className="font-bold text-slate-900 dark:text-white mb-2">Custom Style</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Have a specific idea? Describe it below.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Enter a <span className="font-semibold text-brand-600 dark:text-brand-400">hairstyle name</span> for best AI results.</p>
               <div className="w-full relative">
                 <input
                   type="text"
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
-                  placeholder="e.g. Pink Mohawk"
+                  placeholder="e.g. Pompadour, French Bob, Curtain Bangs"
                   className="w-full px-4 py-3 rounded-xl bg-white dark:bg-black border border-slate-200 dark:border-neutral-700 focus:border-brand-500 outline-none text-sm shadow-sm"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && customText) onCustomPrompt(customText);
@@ -341,12 +365,38 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
 
           {/* Top 20 Section */}
           <div className="border-t border-slate-200 dark:border-neutral-800 pt-12">
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-6">
               <div className="h-px flex-grow bg-gradient-to-r from-transparent via-slate-200 dark:via-neutral-700 to-transparent"></div>
               <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white text-center">
                 Top 20 Trending {gender === 'male' ? 'Men\'s' : 'Women\'s'} Styles
               </h2>
               <div className="h-px flex-grow bg-gradient-to-r from-transparent via-slate-200 dark:via-neutral-700 to-transparent"></div>
+            </div>
+
+            {/* Region Toggle Tabs */}
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex bg-slate-100 dark:bg-neutral-800 p-1 rounded-xl border border-slate-200 dark:border-neutral-700">
+                <button
+                  onClick={() => setStyleRegion('international')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${styleRegion === 'international'
+                      ? 'bg-white dark:bg-neutral-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                  <span>🌍</span>
+                  International
+                </button>
+                <button
+                  onClick={() => setStyleRegion('indian')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${styleRegion === 'indian'
+                      ? 'bg-white dark:bg-neutral-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                  <span>🇮🇳</span>
+                  Indian
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap justify-center gap-3">
