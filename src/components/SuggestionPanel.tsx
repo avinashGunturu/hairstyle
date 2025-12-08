@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaceAnalysis, HairstyleSuggestion, Gender } from '../types';
-// REMOVED: generateHairstylePreview - now using hairstyleImage from database
+import { getAllHairstylesByGender, HairstyleRow } from '../services/hairstyleService';
 
 interface SuggestionPanelProps {
   analysis: FaceAnalysis;
@@ -14,30 +14,22 @@ interface SuggestionPanelProps {
 
 const MALE_STYLES_INTERNATIONAL = [
   "Pompadour", "Undercut", "Quiff", "Buzz Cut", "Crew Cut",
-  "High Fade", "Side Part", "Slick Back", "Man Bun", "Faux Hawk",
-  "Caesar Cut", "French Crop", "Textured Fringe", "Ivy League", "Comb Over",
-  "Modern Mullet", "Dreadlocks", "Short Afro", "Top Knot", "Spiky Texture"
+  "High Fade", "Side Part", "Slick Back", "Man Bun", "Faux Hawk"
 ];
 
 const MALE_STYLES_INDIAN = [
   "Classic Side Part", "Low Fade", "Textured Crop", "Medium Length Waves", "Short Back & Sides",
-  "Disconnected Undercut", "Slicked Back Undercut", "Spiky Top", "Messy Fringe", "Taper Fade",
-  "Bollywood Quiff", "Short Curly Top", "Clean Buzz", "Layered Medium", "Textured Pompadour",
-  "Side Swept Bangs", "Executive Contour", "Natural Waves", "Casual Messy", "Modern Indian Cut"
+  "Bollywood Quiff", "Taper Fade", "Spiky Top", "Messy Fringe", "Modern Indian Cut"
 ];
 
 const FEMALE_STYLES_INTERNATIONAL = [
   "Classic Bob", "Pixie Cut", "Long Bob (Lob)", "Beach Waves", "Long Layers",
-  "Curtain Bangs", "Shag Cut", "Blunt Cut", "Asymmetrical Bob", "Wolf Cut",
-  "French Bob", "Feathered Layers", "Sleek Straight", "Curly Shag", "Box Braids",
-  "High Ponytail", "Messy Bun", "Half-Up Half-Down", "Side Swept Bangs", "Boyfriend Bob"
+  "Curtain Bangs", "Shag Cut", "Blunt Cut", "Asymmetrical Bob", "Wolf Cut"
 ];
 
 const FEMALE_STYLES_INDIAN = [
   "Long Layered Cut", "U-Cut with Layers", "Step Cut", "Front Bangs", "Side Swept Layers",
-  "Feather Cut", "Indian Bob", "Medium Length Waves", "Straight Blunt Cut", "Face Framing Layers",
-  "Soft Curls", "Bollywood Waves", "Traditional Long", "Modern Shag", "Wispy Bangs",
-  "Layered with Volume", "Shoulder Length Bob", "Natural Wavy", "Classic Indian Layers", "Textured Ends"
+  "Feather Cut", "Indian Bob", "Bollywood Waves", "Face Framing Layers", "Straight Blunt Cut"
 ];
 
 interface ExtendedSuggestion extends HairstyleSuggestion {
@@ -260,6 +252,25 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
   const [selectedModalSuggestion, setSelectedModalSuggestion] = useState<ExtendedSuggestion | null>(null);
   const [customText, setCustomText] = useState('');
   const [styleRegion, setStyleRegion] = useState<'international' | 'indian'>('international');
+  const [apiHairstyles, setApiHairstyles] = useState<HairstyleRow[]>([]);
+  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
+
+  // Fetch all hairstyles from API on mount
+  useEffect(() => {
+    const fetchHairstyles = async () => {
+      setIsLoadingStyles(true);
+      try {
+        const hairstyles = await getAllHairstylesByGender(gender);
+        setApiHairstyles(hairstyles);
+        console.log(`[SuggestionPanel] Fetched ${hairstyles.length} hairstyles from API`);
+      } catch (error) {
+        console.error('[SuggestionPanel] Error fetching hairstyles:', error);
+      } finally {
+        setIsLoadingStyles(false);
+      }
+    };
+    fetchHairstyles();
+  }, [gender]);
 
   const suggestions: ExtendedSuggestion[] = analysis.suggestions.map(s => ({ ...s, isCustom: false }));
 
@@ -273,19 +284,45 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
   };
   const trendingStyles = getTrendingStyles();
 
+  // Find matching hairstyle from API data by name (case-insensitive partial match)
+  const findMatchingHairstyle = (styleName: string): HairstyleRow | undefined => {
+    const lowerName = styleName.toLowerCase();
+    return apiHairstyles.find(h =>
+      h.hairstyle_name.toLowerCase().includes(lowerName) ||
+      lowerName.includes(h.hairstyle_name.toLowerCase())
+    );
+  };
+
   const handleCardClick = (suggestion: ExtendedSuggestion) => {
     setSelectedModalSuggestion(suggestion);
   };
 
   const handleTop20Click = (styleName: string) => {
-    const pseudoSuggestion: ExtendedSuggestion = {
-      name: styleName,
-      description: `Trending ${gender} hairstyle.`,
-      reason: "Selected from Top 20 Trending list.",
-      stylingAdvice: "Consult your stylist for this popular cut.",
-      isCustom: false
-    };
-    setSelectedModalSuggestion(pseudoSuggestion);
+    // Try to find matching hairstyle from API data
+    const matchedHairstyle = findMatchingHairstyle(styleName);
+
+    if (matchedHairstyle) {
+      // Use API data
+      const suggestion: ExtendedSuggestion = {
+        name: matchedHairstyle.hairstyle_name,
+        description: matchedHairstyle.description || `A trending ${gender} hairstyle.`,
+        reason: matchedHairstyle.reason || 'Selected from Top 10 Trending list.',
+        stylingAdvice: matchedHairstyle.styling_advice || 'Consult your stylist for this popular cut.',
+        hairstyleImage: matchedHairstyle.hairstyle_image || undefined,
+        isCustom: false
+      };
+      setSelectedModalSuggestion(suggestion);
+    } else {
+      // Fallback: Use local placeholder data
+      const pseudoSuggestion: ExtendedSuggestion = {
+        name: styleName,
+        description: `Trending ${gender} hairstyle.`,
+        reason: 'Selected from Top 10 Trending list.',
+        stylingAdvice: 'Consult your stylist for this popular cut.',
+        isCustom: false
+      };
+      setSelectedModalSuggestion(pseudoSuggestion);
+    }
   };
 
   return (
@@ -379,8 +416,8 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
                 <button
                   onClick={() => setStyleRegion('international')}
                   className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${styleRegion === 'international'
-                      ? 'bg-white dark:bg-neutral-900 text-brand-600 dark:text-brand-400 shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white dark:bg-neutral-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
                   <span>🌍</span>
@@ -389,8 +426,8 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
                 <button
                   onClick={() => setStyleRegion('indian')}
                   className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${styleRegion === 'indian'
-                      ? 'bg-white dark:bg-neutral-900 text-brand-600 dark:text-brand-400 shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white dark:bg-neutral-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
                   <span>🇮🇳</span>
