@@ -59,9 +59,13 @@ export interface HistoryItem {
   id: string;
   timestamp: number;
   customerName?: string;
-  styleName: string;
+  email?: string;
+  mobile?: string;
+  dob?: string;
+  styleName: string | null;
   faceShape: string;
   originalImage: string; // Deprecated: No longer stored for privacy
   generatedImage: string; // Deprecated: No longer stored for privacy
   gender: Gender;
+  status?: 'analysis_started' | 'analysis_complete' | 'generation_complete';
 }

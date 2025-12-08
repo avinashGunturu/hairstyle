@@ -182,12 +182,16 @@ const App: React.FC = () => {
                 dbHistory && dbHistory?.length > 0 ? dbHistory?.map((item: any) => ({
                   id: item.id,
                   timestamp: new Date(item.created_at).getTime(),
-                  customerName: userData.name,
+                  customerName: item.customer_name || userData.name, // Use DB customer_name, fallback to user name
+                  email: item.email,
+                  mobile: item.mobile,
+                  dob: item.dob,
                   styleName: item.style_name,
                   faceShape: item.face_shape || "Unknown",
                   originalImage: "",
                   generatedImage: "",
                   gender: item.gender || userData.gender,
+                  status: item.status,
                 })) : []
               );
             }
@@ -331,7 +335,7 @@ const App: React.FC = () => {
 
               <Route path="/history" element={
                 <HistoryPage
-                  history={history}
+                  userInfo={userInfo}
                   onNavigate={handleNavigate}
                   onSelect={(item) => {
                     // Handle history selection (might need to pass state to MainApp via location state or context)

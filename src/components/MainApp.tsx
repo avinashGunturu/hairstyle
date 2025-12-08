@@ -9,6 +9,7 @@ import { UserInfo, HistoryItem, AppView, FaceAnalysis } from '../types';
 import { detectFaceShape } from '../services/geminiService';
 import { getHairstylesByFaceShape } from '../services/hairstyleService';
 import { saveSession } from '../services/sessionService';
+import { createAnalysisSession } from '../services/historyService';
 
 interface MainAppProps {
     userInfo: UserInfo | null;
@@ -120,6 +121,25 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate 
             console.log('[MainApp] Detecting face shape...');
             const faceShapeResult = await detectFaceShape(base64Image, gender);
             console.log('[MainApp] Detected face shape:', faceShapeResult.shape);
+
+            // Step 1.5: Create analysis session for conversion tracking (early tracking)
+            if (userInfo?.id && sessionUserInfo) {
+                console.log('[MainApp] Creating analysis session for conversion tracking...');
+                const { success, sessionId: historySessionId } = await createAnalysisSession(
+                    userInfo.id,
+                    faceShapeResult.shape,
+                    {
+                        name: sessionUserInfo.name,
+                        email: sessionUserInfo.email,
+                        mobile: sessionUserInfo.mobile,
+                        dob: sessionUserInfo.dob,
+                        gender: sessionUserInfo.gender as 'male' | 'female'
+                    }
+                );
+                if (success) {
+                    console.log('[MainApp] Analysis session created:', historySessionId);
+                }
+            }
 
             // Step 2: Query database for hairstyles matching face shape and gender
             console.log('[MainApp] Fetching hairstyles from database...');
