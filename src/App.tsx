@@ -366,7 +366,7 @@ const App: React.FC = () => {
           <LoadingOverlay message="Signing out..." />
         )}
       </div>
-    </AuthContext.Provider>
+    </AuthContext.Provider >
   );
 };
 

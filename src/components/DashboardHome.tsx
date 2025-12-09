@@ -4,7 +4,7 @@ import { UserInfo, HistoryItem, AppView } from '../types';
 import { getUserCredits } from '../services/creditService';
 
 interface DashboardHomeProps {
-  userInfo: UserInfo;
+  userInfo: UserInfo | null;  // Can be null during loading
   history: HistoryItem[];
   onStartNew: () => void;
   onNavigate: (view: AppView) => void;
@@ -53,7 +53,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ userInfo, history,
       {/* Welcome Banner */}
       <div className="mb-12 text-center md:text-left">
         <h1 className="text-4xl md:text-5xl font-heading font-extrabold text-slate-900 dark:text-white mb-4">
-          Welcome back, <span className="text-brand-600 dark:text-brand-400">{userInfo.name.split(' ')[0]}</span>
+          Welcome back, <span className="text-brand-600 dark:text-brand-400">{userInfo?.name?.split(' ')[0] || 'User'}</span>
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
           Ready to explore a new look today? Your AI stylist is ready.

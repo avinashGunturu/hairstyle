@@ -5,6 +5,7 @@ import { supabase } from '../services/supabaseClient';
 import { initiatePurchase } from '../services/razorpayService';
 import { getUserCredits } from '../services/creditService';
 import { STORAGE_KEYS } from '../constants';
+import { Typewriter } from './Typewriter';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -363,49 +364,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
     }
   };
 
-  // --- Typewriter Effect State ---
-  const [text, setText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [loopNum, setLoopNum] = useState(0);
-  const [typingSpeed, setTypingSpeed] = useState(100);
-
-  const toRotate = ["True Confidence", "Perfect Look", "Inner Glow", "Signature Style"];
-
-  useEffect(() => {
-    const ticker = setTimeout(() => {
-      tick();
-    }, typingSpeed);
-
-    return () => clearTimeout(ticker);
-  }, [text]);
-
-  const tick = () => {
-    let i = loopNum % toRotate.length;
-    let fullText = toRotate[i];
-    let updatedText = isDeleting
-      ? fullText.substring(0, text.length - 1)
-      : fullText.substring(0, text.length + 1);
-
-    setText(updatedText);
-
-    // Randomized smooth typing speed
-    let delta = 100 - Math.random() * 40;
-
-    if (isDeleting) {
-      delta /= 2; // Deleting is faster
-    }
-
-    if (!isDeleting && updatedText === fullText) {
-      setIsDeleting(true);
-      setTypingSpeed(2000); // Pause at end of word
-    } else if (isDeleting && updatedText === '') {
-      setIsDeleting(false);
-      setLoopNum(loopNum + 1);
-      setTypingSpeed(500); // Short pause before new word
-    } else {
-      setTypingSpeed(delta);
-    }
-  };
+  // --- Typewriter phrases (moved to separate component for performance) ---
+  const typewriterPhrases = ["True Confidence", "Perfect Look", "Inner Glow", "Signature Style"] as const;
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -592,7 +552,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigate })
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-blue-600 min-h-[1.1em] sm:min-h-0">
               Reveal Your <br className="sm:hidden" />
               <span className="inline-block">
-                {text}<span className="animate-pulse text-brand-500 ml-1">|</span>
+                <Typewriter phrases={typewriterPhrases} className="" />
               </span>
             </span>
           </h1>
