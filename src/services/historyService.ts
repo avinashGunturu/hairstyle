@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { logger } from '../utils/logger';
 
 export interface GenerationHistoryItem {
     id: string;
@@ -50,7 +51,7 @@ export async function createAnalysisSession(
             .single();
 
         if (error) throw error;
-        console.log('[HistoryService] Created analysis session:', data?.id);
+        logger.log('[HistoryService] Created analysis session:', data?.id);
         return { success: true, sessionId: data?.id };
     } catch (err: any) {
         console.error('Error creating analysis session:', err);
@@ -77,7 +78,7 @@ export async function updateSessionWithGeneration(
             .eq('id', sessionId);
 
         if (error) throw error;
-        console.log('[HistoryService] Updated session with generation:', sessionId, styleName);
+        logger.log('[HistoryService] Updated session with generation:', sessionId, styleName);
         return { success: true };
     } catch (err: any) {
         console.error('Error updating session with generation:', err);

@@ -5,6 +5,7 @@ import { FaceShapeResult, Gender, AppView } from '../types';
 import { UploadArea } from './UploadArea';
 import { supabase } from '../services/supabaseClient';
 import { FREE_TOOL_CONFIG, STORAGE_KEYS } from '../constants';
+import { logger } from '../utils/logger';
 
 interface FreeFaceShapeToolProps {
     onNavigate: (view: AppView) => void;
@@ -70,14 +71,14 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("validateForm", validateForm());
+        logger.log("validateForm", validateForm());
 
         if (validateForm()) {
             // Check usage limit before proceeding
             const usageCount = parseInt(localStorage.getItem(STORAGE_KEYS.FREE_TOOL_USAGE_COUNT) || '0', 10);
-            console.log("usageCount", usageCount);
+            logger.log("usageCount", usageCount);
             // const { data: { session } } = await supabase.auth.getSession();
-            console.log("session", session, !session);
+            logger.log("session", session, !session);
 
             // if (!session && usageCount >= MAX_FREE_USES) {
             //     setShowLimitModal(true);
@@ -96,7 +97,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
                 const age = formData.dob ? calculateAge(formData.dob) : undefined;
                 const user = session?.user;
                 setIsUser(user ? true : false);
-                console.log("User:", user);
+                logger.log("User:", user);
 
                 const initialLog = {
                     created_by: user ? user?.user_metadata?.full_name : 'user',

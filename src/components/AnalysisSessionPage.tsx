@@ -11,6 +11,7 @@ import { UserInfo, HistoryItem, AppView, FaceAnalysis, LoadingState } from '../t
 
 // We import the correct analysis function used in MainApp
 import { analyzeFaceAndSuggestStyles } from '../services/geminiService';
+import { logger } from '../utils/logger';
 
 interface AnalysisSessionPageProps {
     userInfo: UserInfo | null;
@@ -116,8 +117,8 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
         return <LoadingOverlay message="Loading session..." />;
     }
 
-    console.log("Generated Image", generatedImage);
-    console.log("Selected Style", selectedStyle);
+    logger.log("Generated Image", generatedImage);
+    logger.log("Selected Style", selectedStyle);
 
 
     // If we have a generated image, show the ResultView
@@ -139,7 +140,7 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
                     }}
                     onEmailShare={() => {
                         // Placeholder for email share functionality
-                        console.log('Email share not implemented');
+                        logger.log('Email share not implemented');
                     }}
                 />
             </div>

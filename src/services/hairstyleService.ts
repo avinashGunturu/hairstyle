@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { logger } from '../utils/logger';
 import { HairstyleSuggestion } from '../types';
 
 /**
@@ -32,7 +33,7 @@ export async function getHairstylesByFaceShape(
         const normalizedShape = shape.trim();
         const normalizedGender = gender.trim();
 
-        console.log(`[HairstyleService] Fetching hairstyles for shape: ${normalizedShape}, gender: ${normalizedGender}`);
+        logger.log(`[HairstyleService] Fetching hairstyles for shape: ${normalizedShape}, gender: ${normalizedGender}`);
 
         const { data, error } = await supabase
             .from('hairstyles')
@@ -51,7 +52,7 @@ export async function getHairstylesByFaceShape(
             return [];
         }
 
-        console.log(`[HairstyleService] Found ${data.length} hairstyles`);
+        logger.log(`[HairstyleService] Found ${data.length} hairstyles`);
 
         // Map database rows to HairstyleSuggestion interface
         return (data as HairstyleRow[]).map(row => ({
@@ -77,7 +78,7 @@ export async function getAllHairstylesByGender(gender: string): Promise<Hairstyl
     try {
         const normalizedGender = gender.trim().toLowerCase() === 'male' ? 'Male' : 'Female';
 
-        console.log(`[HairstyleService] Fetching all hairstyles for gender: ${normalizedGender}`);
+        logger.log(`[HairstyleService] Fetching all hairstyles for gender: ${normalizedGender}`);
 
         const { data, error } = await supabase
             .from('hairstyles')
@@ -89,7 +90,7 @@ export async function getAllHairstylesByGender(gender: string): Promise<Hairstyl
             throw error;
         }
 
-        console.log(`[HairstyleService] Found ${data?.length || 0} hairstyles for ${normalizedGender}`);
+        logger.log(`[HairstyleService] Found ${data?.length || 0} hairstyles for ${normalizedGender}`);
         return (data as HairstyleRow[]) || [];
     } catch (err) {
         console.error('[HairstyleService] Error fetching all hairstyles:', err);
@@ -107,7 +108,7 @@ export async function getHairstyleByName(name: string, gender: string): Promise<
     try {
         const normalizedGender = gender.trim().toLowerCase() === 'male' ? 'Male' : 'Female';
 
-        console.log(`[HairstyleService] Fetching hairstyle: ${name} for gender: ${normalizedGender}`);
+        logger.log(`[HairstyleService] Fetching hairstyle: ${name} for gender: ${normalizedGender}`);
 
         const { data, error } = await supabase
             .from('hairstyles')

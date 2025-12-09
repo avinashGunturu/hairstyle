@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UserInfo, AppView } from '../types';
 import { getUserCredits } from '../services/creditService';
 import { supabase } from '../services/supabaseClient';
+import { logger } from '../utils/logger';
 
 interface HeaderProps {
   userInfo?: UserInfo | null;
@@ -20,7 +21,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, tog
   const [planType, setPlanType] = useState('free');
   const menuRef = useRef<HTMLDivElement>(null);
 
-  console.log('[Header Render] UserInfo:', userInfo?.email, 'Credits:', credits);
+  logger.log('[Header Render] UserInfo:', userInfo?.email, 'Credits:', credits);
 
   const isActive = (view: AppView) => currentView === view;
 
@@ -53,7 +54,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, tog
         return;
       }
       const userCredits = await getUserCredits(userInfo.id);
-      console.log('[Header] Credits fetched:', userCredits?.credits, 'Plan:', userCredits?.plan_type);
+      logger.log('[Header] Credits fetched:', userCredits?.credits, 'Plan:', userCredits?.plan_type);
       setCredits(userCredits?.credits ?? 0);
       setPlanType(userCredits?.plan_type ?? 'free');
     } catch (err) {
@@ -77,7 +78,7 @@ const HeaderComponent: React.FC<HeaderProps> = ({ userInfo, onLogout, theme, tog
   // Listen for credit updates (after purchases)
   useEffect(() => {
     const handleCreditsUpdated = () => {
-      console.log('[Header] Credits updated event received');
+      logger.log('[Header] Credits updated event received');
       // Debounce the refresh as well
       setTimeout(fetchUserCredits, 100);
     };

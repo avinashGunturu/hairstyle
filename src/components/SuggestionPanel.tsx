@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { FaceAnalysis, HairstyleSuggestion, Gender } from '../types';
 import { getAllHairstylesByGender, HairstyleRow } from '../services/hairstyleService';
 import { HAIRSTYLES } from '../constants';
+import { logger } from '../utils/logger';
 
 interface SuggestionPanelProps {
   analysis: FaceAnalysis;
@@ -248,7 +249,7 @@ export const SuggestionPanel: React.FC<SuggestionPanelProps> = ({ analysis, gend
       try {
         const hairstyles = await getAllHairstylesByGender(gender);
         setApiHairstyles(hairstyles);
-        console.log(`[SuggestionPanel] Fetched ${hairstyles.length} hairstyles from API`);
+        logger.log(`[SuggestionPanel] Fetched ${hairstyles.length} hairstyles from API`);
       } catch (error) {
         console.error('[SuggestionPanel] Error fetching hairstyles:', error);
       } finally {

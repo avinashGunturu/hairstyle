@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { addCredits, updateUserPlan, getSubscriptionPlan } from './creditService';
+import { logger } from '../utils/logger';
 
 // Declare Razorpay on window
 declare global {
@@ -35,7 +36,7 @@ export async function initiatePurchase(
     onFailure?: (error: string) => void
 ) {
     try {
-        console.log('Initializing Razorpay with Key:', import.meta.env.VITE_RAZORPAY_KEY_ID ? 'Found' : 'Missing');
+        logger.log('Initializing Razorpay with Key:', import.meta.env.VITE_RAZORPAY_KEY_ID ? 'Found' : 'Missing');
         // Load Razorpay script
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
@@ -124,7 +125,7 @@ async function handlePaymentSuccess(
     userId: string
 ) {
     try {
-        console.log('Processing payment success for:', paymentRecordId);
+        logger.log('Processing payment success for:', paymentRecordId);
 
         // Update payment record
         const { error: updateError } = await supabase
@@ -142,7 +143,7 @@ async function handlePaymentSuccess(
             throw updateError;
         }
 
-        console.log('Payment transaction updated. Adding credits...');
+        logger.log('Payment transaction updated. Adding credits...');
 
         // Add credits to user account
         const creditResult = await addCredits(
@@ -158,7 +159,7 @@ async function handlePaymentSuccess(
             throw new Error(creditResult.error);
         }
 
-        console.log('Credits added. Updating plan...');
+        logger.log('Credits added. Updating plan...');
 
         // Always update the user's plan type and dates on purchase/upgrade
         // Use the actual plan name (basic, starter, popular, pro, ultra, etc.)
@@ -169,7 +170,7 @@ async function handlePaymentSuccess(
             console.error('Failed to update user plan details');
         }
 
-        console.log('Payment processed successfully');
+        logger.log('Payment processed successfully');
     } catch (error) {
         console.error('Error processing payment:', error);
         // We should probably alert the user here or show a modal

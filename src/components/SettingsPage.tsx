@@ -3,6 +3,7 @@ import { UserInfo, Gender, AppView } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getAllPlans, getUserCredits } from '../services/creditService';
 import { initiatePurchase } from '../services/razorpayService';
+import { logger } from '../utils/logger';
 
 interface SettingsPageProps {
   userInfo: UserInfo;
@@ -133,7 +134,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ userInfo, onNavigate
         // Revert on error
         setPreferences(prev => ({ ...prev, [key]: !newValue }));
       } else {
-        console.log(`[Settings] Preference ${String(key)} saved:`, newValue);
+        logger.log(`[Settings] Preference ${String(key)} saved:`, newValue);
       }
     } catch (err) {
       console.error('Error saving preference:', err);

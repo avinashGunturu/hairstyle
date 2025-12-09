@@ -10,6 +10,7 @@ import { detectFaceShape } from '../services/geminiService';
 import { getHairstylesByFaceShape } from '../services/hairstyleService';
 import { saveSession } from '../services/sessionService';
 import { createAnalysisSession } from '../services/historyService';
+import { logger } from '../utils/logger';
 
 interface MainAppProps {
     userInfo: UserInfo | null;
@@ -61,7 +62,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate 
 
         // 2. Handle Dashboard route
         if (appStage === 'DASHBOARD' && path !== '/app') {
-            console.log("Dashboard stage mismatch, ensuring /app");
+            logger.log("Dashboard stage mismatch, ensuring /app");
             navigate('/app');
         }
     }, [appStage, loadingState, location.pathname, shouldNavigateToSuggestions, navigate]);
@@ -118,13 +119,13 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate 
             const gender = sessionUserInfo?.gender || 'male';
 
             // Step 1: Detect face shape using Gemini AI
-            console.log('[MainApp] Detecting face shape...');
+            logger.log('[MainApp] Detecting face shape...');
             const faceShapeResult = await detectFaceShape(base64Image, gender);
-            console.log('[MainApp] Detected face shape:', faceShapeResult.shape);
+            logger.log('[MainApp] Detected face shape:', faceShapeResult.shape);
 
             // Step 1.5: Create analysis session for conversion tracking (early tracking)
             if (userInfo?.id && sessionUserInfo) {
-                console.log('[MainApp] Creating analysis session for conversion tracking...');
+                logger.log('[MainApp] Creating analysis session for conversion tracking...');
                 const { success, sessionId: historySessionId } = await createAnalysisSession(
                     userInfo.id,
                     faceShapeResult.shape,
@@ -137,15 +138,15 @@ export const MainApp: React.FC<MainAppProps> = ({ userInfo, history, onNavigate 
                     }
                 );
                 if (success) {
-                    console.log('[MainApp] Analysis session created:', historySessionId);
+                    logger.log('[MainApp] Analysis session created:', historySessionId);
                 }
             }
 
             // Step 2: Query database for hairstyles matching face shape and gender
-            console.log('[MainApp] Fetching hairstyles from database...');
+            logger.log('[MainApp] Fetching hairstyles from database...');
             const genderForDb = gender === 'male' ? 'Male' : 'Female';
             const suggestions = await getHairstylesByFaceShape(faceShapeResult.shape, genderForDb, 5);
-            console.log('[MainApp] Found', suggestions.length, 'hairstyles');
+            logger.log('[MainApp] Found', suggestions.length, 'hairstyles');
 
             // Step 3: Build FaceAnalysis object
             const result: FaceAnalysis = {

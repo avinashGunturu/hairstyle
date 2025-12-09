@@ -21,6 +21,7 @@ import { UserInfo, HistoryItem, AppView } from './types';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ErrorBanner } from './components/ErrorBanner';
 import { GlobalErrorModal } from './components/GlobalErrorModal';
+import { logger } from './utils/logger';
 
 // --- Auth Context (defined OUTSIDE App to prevent remounts) ---
 interface AuthContextType {
@@ -108,7 +109,7 @@ const App: React.FC = () => {
   // Supabase Auth Listener - Single source of truth (clean + stable)
   useEffect(() => {
     let mounted = true;
-    console.log("[Auth] Setting up auth listener");
+    logger.log("[Auth] Setting up auth listener");
 
     // --- 1) Check OAuth errors in URL ---
     const url = new URL(window.location.href);
@@ -130,7 +131,7 @@ const App: React.FC = () => {
     // --- 2) Main Auth Listener (only this is needed) ---
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("[Auth Event]:", event, session ? "session exists" : "no session", session);
+        logger.log("[Auth Event]:", event, session ? "session exists" : "no session", session);
 
         // --- SIGNED OUT ---
         if (event === "SIGNED_OUT") {
@@ -160,7 +161,7 @@ const App: React.FC = () => {
             dob: u?.user_metadata?.dob,
           };
 
-          console.log("[Auth] User signed in:", userData.email);
+          logger.log("[Auth] User signed in:", userData.email);
 
           if (mounted) {
             setUserInfo(userData);
@@ -169,9 +170,9 @@ const App: React.FC = () => {
 
           // REDIRECT FIRST before loading history (so user doesn't wait)
           const currentPath = window.location.pathname;
-          console.log("[Auth] Current path:", currentPath);
+          logger.log("[Auth] Current path:", currentPath);
           if (["/login", "/signup"].includes(currentPath)) {
-            console.log("[Auth] Redirecting to /app");
+            logger.log("[Auth] Redirecting to /app");
             navigate("/app");
           }
 
