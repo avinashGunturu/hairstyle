@@ -4,6 +4,7 @@ import { AppView } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { initiatePurchase } from '../services/razorpayService';
 import { getUserCredits } from '../services/creditService';
+import { STORAGE_KEYS, LANDING_PAGE_CONTENT } from '../constants';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -42,7 +43,7 @@ const RevealOnScroll: React.FC<{ children: React.ReactNode; delay?: number; clas
 };
 
 // --- Gender Selection Popup Component ---
-const GENDER_STORAGE_KEY = 'landing_gender_preference';
+const GENDER_STORAGE_KEY = STORAGE_KEYS.GENDER_PREFERENCE;
 
 interface GenderSelectionPopupProps {
   onSelect: (gender: 'male' | 'female') => void;

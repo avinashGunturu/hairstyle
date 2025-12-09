@@ -1,4 +1,5 @@
 import { FaceAnalysis } from '../types';
+import { STORAGE_KEYS, PAGINATION } from '../constants';
 
 export interface SessionData {
     id: string;
@@ -8,7 +9,7 @@ export interface SessionData {
     gender: 'male' | 'female';
 }
 
-const STORAGE_KEY = 'hairstyle_app_sessions';
+const STORAGE_KEY = STORAGE_KEYS.SESSIONS;
 
 /**
  * Save a new session to localStorage

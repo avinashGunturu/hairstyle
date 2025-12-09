@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HistoryItem, AppView, UserInfo } from '../types';
 import { getUserHistoryPaginated } from '../services/historyService';
+import { PAGINATION } from '../constants';
 
 interface HistoryPageProps {
   userInfo: UserInfo | null;
@@ -80,10 +81,10 @@ const ViewDetailsModal: React.FC<{
             </div>
             <div className="flex-1">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</p>
-              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${item.status === 'generation_complete'
+              <span className={`inline - block px - 2.5 py - 1 rounded - full text - xs font - medium ${item.status === 'generation_complete'
                 ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-900/30'
                 : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30'
-                }`}>
+                } `}>
                 {item.status === 'generation_complete' ? '✓ Done' : '◐ Partial'}
               </span>
             </div>
@@ -104,7 +105,7 @@ const ViewDetailsModal: React.FC<{
   );
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = PAGINATION.HISTORY_PAGE_SIZE;
 
 export const HistoryPage: React.FC<HistoryPageProps> = ({ userInfo, onNavigate, onSelect }) => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -414,12 +415,12 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ userInfo, onNavigate, 
                 key={idx}
                 onClick={() => typeof page === 'number' && handlePageChange(page)}
                 disabled={page === '...'}
-                className={`min-w-[32px] px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${page === currentPage
+                className={`min - w - [32px] px - 2 py - 1.5 rounded - lg text - xs font - medium transition - colors ${page === currentPage
                   ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30'
                   : page === '...'
                     ? 'text-slate-400 cursor-default'
                     : 'border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
-                  }`}
+                  } `}
               >
                 {page}
               </button>

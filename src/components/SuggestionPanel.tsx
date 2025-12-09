@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaceAnalysis, HairstyleSuggestion, Gender } from '../types';
 import { getAllHairstylesByGender, HairstyleRow } from '../services/hairstyleService';
+import { HAIRSTYLES } from '../constants';
 
 interface SuggestionPanelProps {
   analysis: FaceAnalysis;
@@ -12,25 +13,10 @@ interface SuggestionPanelProps {
   onCustomPrompt: (prompt: string) => void;
 }
 
-const MALE_STYLES_INTERNATIONAL = [
-  "Pompadour", "Undercut", "Quiff", "Buzz Cut", "Crew Cut",
-  "High Fade", "Side Part", "Slick Back", "Man Bun", "Faux Hawk"
-];
-
-const MALE_STYLES_INDIAN = [
-  "Classic Side Part", "Low Fade", "Textured Crop", "Medium Length Waves", "Short Back & Sides",
-  "Bollywood Quiff", "Taper Fade", "Spiky Top", "Messy Fringe", "Modern Indian Cut"
-];
-
-const FEMALE_STYLES_INTERNATIONAL = [
-  "Classic Bob", "Pixie Cut", "Long Bob (Lob)", "Beach Waves", "Long Layers",
-  "Curtain Bangs", "Shag Cut", "Blunt Cut", "Asymmetrical Bob", "Wolf Cut"
-];
-
-const FEMALE_STYLES_INDIAN = [
-  "Long Layered Cut", "U-Cut with Layers", "Step Cut", "Front Bangs", "Side Swept Layers",
-  "Feather Cut", "Indian Bob", "Bollywood Waves", "Face Framing Layers", "Straight Blunt Cut"
-];
+const MALE_STYLES_INTERNATIONAL = HAIRSTYLES.MALE_INTERNATIONAL;
+const MALE_STYLES_INDIAN = HAIRSTYLES.MALE_INDIAN;
+const FEMALE_STYLES_INTERNATIONAL = HAIRSTYLES.FEMALE_INTERNATIONAL;
+const FEMALE_STYLES_INDIAN = HAIRSTYLES.FEMALE_INDIAN;
 
 interface ExtendedSuggestion extends HairstyleSuggestion {
   previewUrl?: string;

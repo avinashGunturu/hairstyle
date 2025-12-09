@@ -1,13 +1,14 @@
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { IMAGE_CONFIG } from '../constants';
 
 interface UploadAreaProps {
   onImageSelected: (file: File) => void;
 }
 
 // Supported image formats for Gemini API
-const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
-const SUPPORTED_EXTENSIONS = ['JPG', 'JPEG', 'PNG', 'WebP', 'HEIC'];
+const SUPPORTED_FORMATS = [...IMAGE_CONFIG.SUPPORTED_FORMATS];
+const SUPPORTED_EXTENSIONS = [...IMAGE_CONFIG.SUPPORTED_EXTENSIONS];
 
 export const UploadArea: React.FC<UploadAreaProps> = ({ onImageSelected }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -25,13 +26,13 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onImageSelected }) => {
     if (!file) return;
 
     // Check if file type is supported
-    if (!SUPPORTED_FORMATS.includes(file.type)) {
+    if (!(SUPPORTED_FORMATS as readonly string[]).includes(file.type)) {
       setFormatError(`Unsupported format! Please upload ${SUPPORTED_EXTENSIONS.join(', ')} images only.`);
       return;
     }
 
     // Check file size (max 20MB for Gemini)
-    if (file.size > 20 * 1024 * 1024) {
+    if (file.size > IMAGE_CONFIG.MAX_FILE_SIZE_BYTES) {
       setFormatError('Image too large! Please upload an image under 20MB.');
       return;
     }

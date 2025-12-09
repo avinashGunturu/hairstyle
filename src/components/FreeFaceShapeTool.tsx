@@ -4,13 +4,14 @@ import { detectFaceShape } from '../services/geminiService';
 import { FaceShapeResult, Gender, AppView } from '../types';
 import { UploadArea } from './UploadArea';
 import { supabase } from '../services/supabaseClient';
+import { FREE_TOOL_CONFIG, STORAGE_KEYS } from '../constants';
 
 interface FreeFaceShapeToolProps {
     onNavigate: (view: AppView) => void;
 }
 
 export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate }) => {
-    const MAX_FREE_USES = 5;
+    const MAX_FREE_USES = FREE_TOOL_CONFIG.MAX_FREE_USES;
     const [step, setStep] = useState<'FORM' | 'UPLOAD' | 'ANALYZING' | 'RESULT'>('FORM');
     const [formData, setFormData] = useState({
         name: '',
@@ -73,7 +74,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
 
         if (validateForm()) {
             // Check usage limit before proceeding
-            const usageCount = parseInt(localStorage.getItem('free_tool_usage_count') || '0', 10);
+            const usageCount = parseInt(localStorage.getItem(STORAGE_KEYS.FREE_TOOL_USAGE_COUNT) || '0', 10);
             console.log("usageCount", usageCount);
             // const { data: { session } } = await supabase.auth.getSession();
             console.log("session", session, !session);
@@ -181,8 +182,8 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
             }
 
             // Increment usage count in localStorage
-            const currentCount = parseInt(localStorage.getItem('free_tool_usage_count') || '0', 10);
-            localStorage.setItem('free_tool_usage_count', (currentCount + 1).toString());
+            const currentCount = parseInt(localStorage.getItem(STORAGE_KEYS.FREE_TOOL_USAGE_COUNT) || '0', 10);
+            localStorage.setItem(STORAGE_KEYS.FREE_TOOL_USAGE_COUNT, (currentCount + 1).toString());
 
             // Clear legacy key if it exists to switch to new system
             localStorage.removeItem('has_used_free_tool');
