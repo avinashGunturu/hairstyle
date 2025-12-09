@@ -1,150 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HairstyleAI - Virtual Try-On SaaS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                50: '#f0fdfa',
-                100: '#ccfbf1',
-                200: '#99f6e4',
-                300: '#5eead4',
-                400: '#2dd4bf',
-                500: '#14b8a6',
-                600: '#0d9488',
-                700: '#0f766e',
-                800: '#115e59',
-                900: '#134e4a',
-                950: '#042f2e',
-              },
-              neutral: {
-                850: '#172033',
-                900: '#0f172a',
-                950: '#020617',
-              },
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HairstyleAI - AI-Powered Virtual Hairstyle Try-On</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="Transform your look with AI-powered hairstyle try-on. Discover your perfect hairstyle based on your face shape with our advanced AI technology." />
+  <meta name="keywords" content="hairstyle, AI, virtual try-on, face shape, hair, beauty, styling, makeover" />
+  <meta name="author" content="HairstyleAI" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://hairstyleai.com" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hairstyleai.com" />
+  <meta property="og:title" content="HairstyleAI - AI-Powered Virtual Hairstyle Try-On" />
+  <meta property="og:description"
+    content="Transform your look with AI. Discover your perfect hairstyle based on your face shape." />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://hairstyleai.com" />
+  <meta name="twitter:title" content="HairstyleAI - AI-Powered Virtual Hairstyle Try-On" />
+  <meta name="twitter:description"
+    content="Transform your look with AI. Discover your perfect hairstyle based on your face shape." />
+  <meta name="twitter:image" content="/og-image.png" />
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#14b8a6" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              300: '#5eead4',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+              950: '#042f2e',
             },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              heading: ['Outfit', 'sans-serif'],
+            neutral: {
+              850: '#172033',
+              900: '#0f172a',
+              950: '#020617',
             },
-            fontSize: {
-              'caption': ['0.75rem', { lineHeight: '1rem' }],
-              'caption-bold': ['0.75rem', { lineHeight: '1rem', fontWeight: '600' }],
-              'body': ['0.9375rem', { lineHeight: '1.5rem' }],
-              'body-bold': ['0.9375rem', { lineHeight: '1.5rem', fontWeight: '600' }],
-              'heading-3': ['1.25rem', { lineHeight: '1.75rem', fontWeight: '600' }],
-              'heading-2': ['1.75rem', { lineHeight: '2rem', fontWeight: '700', letterSpacing: '-0.02em' }],
-              'heading-1': ['2.5rem', { lineHeight: '3rem', fontWeight: '800', letterSpacing: '-0.02em' }],
-              'display': ['3.5rem', { lineHeight: '1.1', fontWeight: '800', letterSpacing: '-0.03em' }],
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            heading: ['Outfit', 'sans-serif'],
+          },
+          fontSize: {
+            'caption': ['0.75rem', { lineHeight: '1rem' }],
+            'caption-bold': ['0.75rem', { lineHeight: '1rem', fontWeight: '600' }],
+            'body': ['0.9375rem', { lineHeight: '1.5rem' }],
+            'body-bold': ['0.9375rem', { lineHeight: '1.5rem', fontWeight: '600' }],
+            'heading-3': ['1.25rem', { lineHeight: '1.75rem', fontWeight: '600' }],
+            'heading-2': ['1.75rem', { lineHeight: '2rem', fontWeight: '700', letterSpacing: '-0.02em' }],
+            'heading-1': ['2.5rem', { lineHeight: '3rem', fontWeight: '800', letterSpacing: '-0.02em' }],
+            'display': ['3.5rem', { lineHeight: '1.1', fontWeight: '800', letterSpacing: '-0.03em' }],
+          },
+          borderRadius: {
+            'DEFAULT': '12px',
+            'sm': '6px',
+            'md': '8px',
+            'lg': '16px',
+            'xl': '24px',
+            '2xl': '32px',
+            'full': '9999px',
+          },
+          boxShadow: {
+            'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+            'glow': '0 0 20px rgba(45, 212, 191, 0.3)',
+            'overlay': '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+            'float': 'float 6s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
             },
-            borderRadius: {
-              'DEFAULT': '12px',
-              'sm': '6px',
-              'md': '8px',
-              'lg': '16px',
-              'xl': '24px',
-              '2xl': '32px',
-              'full': '9999px',
-            },
-            boxShadow: {
-              'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
-              'glow': '0 0 20px rgba(45, 212, 191, 0.3)',
-              'overlay': '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.5s ease-out forwards',
-              'float': 'float 6s ease-in-out infinite',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              },
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
             },
           },
         },
-      };
-    </script>
-    <style>
-      body {
-        -webkit-font-smoothing: antialiased;
-      }
-      
-      /* Dark Mode Glass */
-      .dark .glass-panel {
-        background: rgba(30, 41, 59, 0.4);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .dark .glass-card {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      .dark .glass-card:hover {
-        background: rgba(30, 41, 59, 0.7);
-        border-color: rgba(45, 212, 191, 0.3);
-      }
+      },
+    };
+  </script>
+  <style>
+    body {
+      -webkit-font-smoothing: antialiased;
+    }
 
-      /* Light Mode Glass */
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-      }
-      .glass-card {
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(203, 213, 225, 0.4);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .glass-card:hover {
-        background: rgba(255, 255, 255, 0.9);
-        border-color: rgba(45, 212, 191, 0.5);
-        transform: translateY(-4px);
-        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
-      }
-      .dark .glass-card:hover {
-        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
-      }
-      
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #94a3b8; 
-        border-radius: 3px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #334155; 
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
-      }
-    </style>
+    /* Dark Mode Glass */
+    .dark .glass-panel {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .dark .glass-card {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .dark .glass-card:hover {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(45, 212, 191, 0.3);
+    }
+
+    /* Light Mode Glass */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(203, 213, 225, 0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(45, 212, 191, 0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+    }
+
+    .dark .glass-card:hover {
+      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 3px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -157,10 +201,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/index.tsx"></script>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+
 </html>

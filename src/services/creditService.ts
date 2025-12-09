@@ -1,9 +1,26 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Get user credit information
+ * User Credits Interface
  */
-export async function getUserCredits(userId: string) {
+interface UserCredits {
+    user_id: string;
+    credits: number;
+    plan_type: string;
+    plan_start_date?: string;
+    plan_end_date?: string;
+}
+
+/**
+ * Retrieves the credit information for a user from the database.
+ * 
+ * @param userId - The unique identifier of the user
+ * @returns The user's credit data including balance and plan info, or null if not found
+ * @example
+ * const credits = await getUserCredits('user-123');
+ * console.log(credits?.credits); // 10
+ */
+export async function getUserCredits(userId: string): Promise<UserCredits | null> {
     try {
         const { data, error } = await supabase
             .from('user_credits')
