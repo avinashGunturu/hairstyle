@@ -4,7 +4,7 @@ import { AppView } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { initiatePurchase } from '../services/razorpayService';
 import { getUserCredits } from '../services/creditService';
-import { STORAGE_KEYS, LANDING_PAGE_CONTENT } from '../constants';
+import { STORAGE_KEYS } from '../constants';
 
 interface LandingPageProps {
   onStart: () => void;

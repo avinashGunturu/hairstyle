@@ -8,9 +8,6 @@ import { SuggestionPanel } from './SuggestionPanel';
 import { ResultView } from './ResultView';
 import { LoadingOverlay } from './LoadingOverlay';
 import { UserInfo, HistoryItem, AppView, FaceAnalysis, LoadingState } from '../types';
-
-// We import the correct analysis function used in MainApp
-import { analyzeFaceAndSuggestStyles } from '../services/geminiService';
 import { logger } from '../utils/logger';
 
 interface AnalysisSessionPageProps {

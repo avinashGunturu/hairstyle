@@ -1,5 +1,5 @@
 import { FaceAnalysis } from '../types';
-import { STORAGE_KEYS, PAGINATION } from '../constants';
+import { STORAGE_KEYS } from '../constants';
 
 export interface SessionData {
     id: string;
