@@ -53,9 +53,9 @@ export async function createAnalysisSession(
         if (error) throw error;
         logger.log('[HistoryService] Created analysis session:', data?.id);
         return { success: true, sessionId: data?.id };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error creating analysis session:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
@@ -80,9 +80,9 @@ export async function updateSessionWithGeneration(
         if (error) throw error;
         logger.log('[HistoryService] Updated session with generation:', sessionId, styleName);
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error updating session with generation:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
@@ -133,9 +133,9 @@ export async function saveGenerationToHistory(
 
         if (error) throw error;
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error saving generation history:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
@@ -277,9 +277,9 @@ export async function deleteHistoryItem(
 
         if (error) throw error;
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error deleting history item:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
@@ -297,9 +297,9 @@ export async function clearAllHistory(
 
         if (error) throw error;
         return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error clearing history:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 

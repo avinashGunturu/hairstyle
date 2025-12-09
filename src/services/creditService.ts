@@ -106,9 +106,9 @@ export async function deductCredit(
         });
 
         return { success: true, newBalance };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error deducting credit:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
@@ -160,9 +160,9 @@ export async function addCredits(
         });
 
         return { success: true, newBalance };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Error adding credits:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
 
