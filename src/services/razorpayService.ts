@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { addCredits, updateUserPlan, getSubscriptionPlan } from './creditService';
 import { logger } from '../utils/logger';
+import { showGlobalToast } from '../components/Toast';
 
 // Declare Razorpay on window
 declare global {
@@ -173,8 +174,8 @@ async function handlePaymentSuccess(
         logger.log('Payment processed successfully');
     } catch (error) {
         console.error('Error processing payment:', error);
-        // We should probably alert the user here or show a modal
-        alert('Payment succeeded at gateway but failed to update account. Please contact support.');
+        // Show toast notification instead of alert
+        showGlobalToast('Payment succeeded but failed to update account. Please contact support.', 'error', 10000);
     }
 }
 

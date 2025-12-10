@@ -1,6 +1,7 @@
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { IMAGE_CONFIG } from '../constants';
+import { showGlobalToast } from './Toast';
 
 interface UploadAreaProps {
   onImageSelected: (file: File) => void;
@@ -71,7 +72,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ onImageSelected }) => {
       setShowCamera(true);
     } catch (err) {
       console.error("Error accessing camera", err);
-      alert("Could not access camera. Please check permissions.");
+      showGlobalToast('Could not access camera. Please check permissions.', 'error');
     }
   };
 

@@ -113,14 +113,32 @@ export async function getLatestPendingSession(
 
 /**
  * Save a new generation to history (original function - keeps backward compatibility)
+ * Includes duplicate prevention check
  */
 export async function saveGenerationToHistory(
     userId: string,
     styleName: string,
     faceShape?: string,
     gender?: 'male' | 'female'
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; isDuplicate?: boolean }> {
     try {
+        // Check for duplicate entry (same user, style, and face shape within last 5 minutes)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+        const { data: existing } = await supabase
+            .from('generation_history')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('style_name', styleName)
+            .gte('created_at', fiveMinutesAgo)
+            .limit(1)
+            .maybeSingle();
+
+        if (existing) {
+            // Duplicate found, skip insert but return success
+            return { success: true, isDuplicate: true };
+        }
+
         const { error } = await supabase
             .from('generation_history')
             .insert({
