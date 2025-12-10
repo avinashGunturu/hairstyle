@@ -51,8 +51,14 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
     }, [sessionId, navigate]);
 
 
-    // 2. Handle Style Generation
+    // 2. Handle Style Generation (with race condition prevention)
     const handleGenerateStyle = async (styleName: string, customPrompt?: string) => {
+        // LOCK: Prevent multiple concurrent generation requests
+        if (loadingState === LoadingState.GENERATING) {
+            logger.log('Generation already in progress, ignoring duplicate request');
+            return;
+        }
+
         if (!userInfo || !originalImage || !analysis) {
             setError("Missing session data.");
             return;
@@ -64,9 +70,21 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
             return;
         }
 
+        // Set loading state IMMEDIATELY to prevent race conditions
         setLoadingState(LoadingState.GENERATING);
         const finalPrompt = customPrompt || styleName;
         setSelectedStyle(finalPrompt);
+
+        // OPTIMISTIC CREDIT DEDUCTION: Deduct BEFORE calling API
+        // This prevents race condition where multiple clicks all pass credit check
+        const creditResult = await deductCredit(userInfo.id, `Generated style: ${finalPrompt}`);
+        window.dispatchEvent(new CustomEvent('creditsUpdated'));
+
+        if (!creditResult.success) {
+            setError("Failed to process credit. Please try again.");
+            setLoadingState(LoadingState.IDLE);
+            return;
+        }
 
         try {
             const resultImageUrl = await generateHairstyleImage(
@@ -75,10 +93,6 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
             );
 
             setGeneratedImage(resultImageUrl);
-
-            // Deduct credit & notify header to update
-            await deductCredit(userInfo.id, `Generated style: ${finalPrompt}`);
-            window.dispatchEvent(new CustomEvent('creditsUpdated')); // Update header credits display
 
             await saveGenerationToHistory(
                 userInfo.id,
@@ -91,7 +105,7 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
             const newHistoryItem: HistoryItem = {
                 id: window.crypto.randomUUID(),
                 timestamp: Date.now(),
-                customerName: userInfo.name, // Fallback to user name
+                customerName: userInfo.name,
                 styleName: finalPrompt,
                 faceShape: analysis.faceShape,
                 originalImage: originalImage,
@@ -102,10 +116,16 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
 
             setLoadingState(LoadingState.IDLE);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Generation failed", err);
+
+            // ROLLBACK: Refund credit on generation failure
+            // Note: In production, this should be handled server-side
+            // For now, we show error but don't auto-refund (requires edge function)
+            logger.log('Generation failed after credit deduction - credit consumed');
+
             setLoadingState(LoadingState.IDLE);
-            window.dispatchEvent(new CustomEvent('apiError')); // Global modal
+            window.dispatchEvent(new CustomEvent('apiError'));
         }
     };
 
