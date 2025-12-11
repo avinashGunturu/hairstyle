@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSession } from '../services/sessionService';
-import { generateHairstyleImage } from '../services/geminiServiceSecure'; // Removed invalid import
-import { checkHasCredits, deductCredit } from '../services/creditService';
+import { generateHairstyleImage } from '../services/geminiServiceSecure';
+import { checkHasCredits } from '../services/creditService'; // Removed deductCredit - now handled server-side
 import { saveGenerationToHistory } from '../services/historyService';
 import { SuggestionPanel } from './SuggestionPanel';
 import { ResultView } from './ResultView';
@@ -64,6 +64,7 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
             return;
         }
 
+        // Quick client-side check (actual check happens server-side)
         const hasCredits = await checkHasCredits(userInfo.id);
         if (!hasCredits) {
             setShowNoCreditsModal(true);
@@ -75,22 +76,16 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
         const finalPrompt = customPrompt || styleName;
         setSelectedStyle(finalPrompt);
 
-        // OPTIMISTIC CREDIT DEDUCTION: Deduct BEFORE calling API
-        // This prevents race condition where multiple clicks all pass credit check
-        const creditResult = await deductCredit(userInfo.id, `Generated style: ${finalPrompt}`);
-        window.dispatchEvent(new CustomEvent('creditsUpdated'));
-
-        if (!creditResult.success) {
-            setError("Failed to process credit. Please try again.");
-            setLoadingState(LoadingState.IDLE);
-            return;
-        }
-
         try {
+            // NOTE: Credit deduction now happens SERVER-SIDE in edge function
+            // This is secure - users cannot bypass credit checks
             const resultImageUrl = await generateHairstyleImage(
                 originalImage,
                 finalPrompt
             );
+
+            // Update credits display after successful generation
+            window.dispatchEvent(new CustomEvent('creditsUpdated'));
 
             setGeneratedImage(resultImageUrl);
 
@@ -119,13 +114,17 @@ export const AnalysisSessionPage: React.FC<AnalysisSessionPageProps> = ({ userIn
         } catch (err: unknown) {
             console.error("Generation failed", err);
 
-            // ROLLBACK: Refund credit on generation failure
-            // Note: In production, this should be handled server-side
-            // For now, we show error but don't auto-refund (requires edge function)
-            logger.log('Generation failed after credit deduction - credit consumed');
+            // Check if it's a NO_CREDITS error from server
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            if (errorMessage.includes('NO_CREDITS') || errorMessage.includes('402')) {
+                setShowNoCreditsModal(true);
+            } else {
+                window.dispatchEvent(new CustomEvent('apiError'));
+            }
 
+            // Refresh credits display (server already refunded if needed)
+            window.dispatchEvent(new CustomEvent('creditsUpdated'));
             setLoadingState(LoadingState.IDLE);
-            window.dispatchEvent(new CustomEvent('apiError'));
         }
     };
 

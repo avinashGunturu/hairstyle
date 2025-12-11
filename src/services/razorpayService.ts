@@ -1,7 +1,6 @@
 import { supabase } from './supabaseClient';
-import { addCredits, updateUserPlan, getSubscriptionPlan } from './creditService';
+import { getSubscriptionPlan } from './creditService';
 import { logger } from '../utils/logger';
-import { showGlobalToast } from '../components/Toast';
 
 // Declare Razorpay on window
 declare global {
@@ -79,15 +78,31 @@ export async function initiatePurchase(
             name: 'HairstyleAI',
             description: plan.display_name,
             image: 'https://placehold.co/256x256?text=H', // Use public URL to avoid CORS on localhost
+            // Include metadata for webhook verification
+            notes: {
+                payment_record_id: paymentRecord.id,
+                user_id: session.user.id,
+                plan_id: plan.id,
+                plan_name: plan.display_name
+            },
             handler: async function (response: any) {
-                // Payment successful
-                await handlePaymentSuccess(
-                    paymentRecord.id,
-                    response.razorpay_payment_id,
-                    response.razorpay_signature || '',
-                    plan,
-                    session.user.id
-                );
+                // Payment successful at client side
+                // NOTE: Credits are added by webhook, NOT here
+                // This handler just updates UI and logs the attempt
+                logger.log('Payment completed at client:', response.razorpay_payment_id);
+
+                // Update payment record with gateway payment ID (webhook will mark as success)
+                await supabase
+                    .from('payment_transactions')
+                    .update({
+                        gateway_payment_id: response.razorpay_payment_id,
+                        gateway_signature: response.razorpay_signature || '',
+                        // Don't set status to 'success' here - webhook does that after verification
+                        status: 'processing'
+                    })
+                    .eq('id', paymentRecord.id);
+
+                // Show success message - credits will be added by webhook
                 if (onSuccess) onSuccess();
             },
             prefill: {
@@ -116,68 +131,11 @@ export async function initiatePurchase(
 }
 
 /**
- * Handle successful payment
+ * NOTE: handlePaymentSuccess has been removed.
+ * Credits are now added securely via the Razorpay webhook edge function.
+ * This prevents users from faking payment callbacks to get free credits.
+ * See: supabase/functions/razorpay-webhook/index.ts
  */
-async function handlePaymentSuccess(
-    paymentRecordId: string,
-    razorpayPaymentId: string,
-    razorpaySignature: string,
-    plan: any,
-    userId: string
-) {
-    try {
-        logger.log('Processing payment success for:', paymentRecordId);
-
-        // Update payment record
-        const { error: updateError } = await supabase
-            .from('payment_transactions')
-            .update({
-                gateway_payment_id: razorpayPaymentId,
-                gateway_signature: razorpaySignature,
-                status: 'success',
-                completed_at: new Date().toISOString()
-            })
-            .eq('id', paymentRecordId);
-
-        if (updateError) {
-            console.error('Failed to update payment transaction:', updateError);
-            throw updateError;
-        }
-
-        logger.log('Payment transaction updated. Adding credits...');
-
-        // Add credits to user account
-        const creditResult = await addCredits(
-            userId,
-            plan.credits,
-            plan.plan_type === 'subscription' ? 'subscription' : 'topup',
-            `Purchased ${plan.display_name}`,
-            plan.id
-        );
-
-        if (!creditResult.success) {
-            console.error('Failed to add credits:', creditResult.error);
-            throw new Error(creditResult.error);
-        }
-
-        logger.log('Credits added. Updating plan...');
-
-        // Always update the user's plan type and dates on purchase/upgrade
-        // Use the actual plan name (basic, starter, popular, pro, ultra, etc.)
-        const durationDays = plan.duration_days > 0 ? plan.duration_days : 30; // Default to 30 days if not specified
-        const planName = plan.plan_name || plan.id; // Use plan_name from database
-        const planUpdateSuccess = await updateUserPlan(userId, planName, durationDays);
-        if (!planUpdateSuccess) {
-            console.error('Failed to update user plan details');
-        }
-
-        logger.log('Payment processed successfully');
-    } catch (error) {
-        console.error('Error processing payment:', error);
-        // Show toast notification instead of alert
-        showGlobalToast('Payment succeeded but failed to update account. Please contact support.', 'error', 10000);
-    }
-}
 
 /**
  * Handle failed payment
