@@ -155,8 +155,8 @@ const BeforeAfterDemo: React.FC<BeforeAfterDemoProps> = ({ gender }) => {
       after: "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/men_after.png"
     },
     female: {
-      before: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=800&q=80",
-      after: "https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=800&q=80"
+      before: "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/women_before.jpeg",
+      after: "https://svuhythvtdbtbleberdz.supabase.co/storage/v1/object/public/hairStyles/women_after.jpeg"
     }
   };
 
