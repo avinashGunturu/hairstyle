@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSession } from '../services/sessionService';
-import { generateHairstyleImage } from '../services/geminiService'; // Removed invalid import
+import { generateHairstyleImage } from '../services/geminiServiceSecure'; // Removed invalid import
 import { checkHasCredits, deductCredit } from '../services/creditService';
 import { saveGenerationToHistory } from '../services/historyService';
 import { SuggestionPanel } from './SuggestionPanel';

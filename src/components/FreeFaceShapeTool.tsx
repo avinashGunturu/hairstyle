@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { detectFaceShape } from '../services/geminiService';
+import { detectFaceShape } from '../services/geminiServiceSecure';
 import { FaceShapeResult, Gender, AppView } from '../types';
 import { UploadArea } from './UploadArea';
 import { supabase } from '../services/supabaseClient';
 import { FREE_TOOL_CONFIG, STORAGE_KEYS } from '../constants';
 import { logger } from '../utils/logger';
+import { ServiceErrorModal } from './ServiceErrorModal';
 
 interface FreeFaceShapeToolProps {
     onNavigate: (view: AppView) => void;
@@ -24,6 +25,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
     const [image, setImage] = useState<string | null>(null);
     const [result, setResult] = useState<FaceShapeResult | null>(null);
     const [apiError, setApiError] = useState<string | null>(null);
+    const [showErrorModal, setShowErrorModal] = useState(false);
     const [currentLogId, setCurrentLogId] = useState<string | null>(null);
     const [showLimitModal, setShowLimitModal] = useState(false);
     const [isUser, setIsUser] = useState<boolean | null>(null);
@@ -192,6 +194,7 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
         } catch (err) {
             console.error("Analysis failed:", err);
             setApiError("We couldn't analyze this image. Please ensure your face is clearly visible.");
+            setShowErrorModal(true);
             setStep('UPLOAD');
         }
     };
@@ -463,6 +466,22 @@ export const FreeFaceShapeTool: React.FC<FreeFaceShapeToolProps> = ({ onNavigate
                     </div>
                 </div>
             </div>
+
+            {/* Service Error Modal */}
+            <ServiceErrorModal
+                isOpen={showErrorModal}
+                onClose={() => {
+                    setShowErrorModal(false);
+                    setApiError(null);
+                }}
+                onRetry={() => {
+                    setShowErrorModal(false);
+                    setApiError(null);
+                    // User can try again by uploading a new photo
+                }}
+                errorType="api"
+                message={apiError || undefined}
+            />
         </div>
     );
 };

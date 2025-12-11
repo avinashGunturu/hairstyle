@@ -6,7 +6,7 @@ import { UploadArea } from './UploadArea';
 import { LoadingOverlay } from './LoadingOverlay';
 import { ErrorBanner } from './ErrorBanner';
 import { UserInfo, HistoryItem, AppView, FaceAnalysis } from '../types';
-import { detectFaceShape } from '../services/geminiService';
+import { detectFaceShape } from '../services/geminiServiceSecure';
 import { getHairstylesByFaceShape } from '../services/hairstyleService';
 import { saveSession } from '../services/sessionService';
 import { createAnalysisSession } from '../services/historyService';
