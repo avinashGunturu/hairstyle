@@ -244,24 +244,46 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setLoadingState('LOGGING_OUT');
 
-    // Fire-and-forget signOut - DO NOT AWAIT to avoid hanging
-    // Remove scope: 'global' as it's known to hang
+    // 1. Capture current preferences to preserve
+    const currentTheme = localStorage.getItem('theme');
+
+    // 2. Clear Local Storage entirely
+    try {
+      localStorage.clear();
+      // Restore theme
+      if (currentTheme) {
+        localStorage.setItem('theme', currentTheme);
+      }
+    } catch (e) {
+      console.warn('Error clearing localStorage', e);
+    }
+
+    // 3. Clear Session Storage entirely
+    try {
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn('Error clearing sessionStorage', e);
+    }
+
+    // 4. Clear Cookies
+    try {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    } catch (e) {
+      console.warn('Error clearing cookies', e);
+    }
+
+    // 5. Fire-and-forget signOut - DO NOT AWAIT to avoid hanging
     supabase.auth.signOut().catch((err) => {
       console.warn('Supabase signOut error (ignored):', err);
     });
 
-    // Immediately clear state - don't wait for API
+    // 6. Reset State & Navigate
     setUserInfo(null);
     setHistory([]);
-    try {
-      localStorage.removeItem('supabase.auth.token');
-      // Clear any other Supabase storage
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (e) { }
     setLoadingState('IDLE');
     navigate('/');
   };

@@ -79,9 +79,9 @@ const ViewDetailsModal: React.FC<{
                 </span>
               )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</p>
-              <span className={`inline - block px - 2.5 py - 1 rounded - full text - xs font - medium ${item.status === 'generation_complete'
+              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${item.status === 'generation_complete'
                 ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-900/30'
                 : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30'
                 } `}>
@@ -312,6 +312,60 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ userInfo, onNavigate, 
         </div>
       </div>
 
+      {/* Pagination - Moved to Top */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+          {/* Showing info */}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Showing <span className="font-medium text-slate-900 dark:text-white">{(currentPage - 1) * PAGE_SIZE + 1}</span> to{' '}
+            <span className="font-medium text-slate-900 dark:text-white">{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of{' '}
+            <span className="font-medium text-slate-900 dark:text-white">{totalCount}</span>
+          </p>
+
+          {/* Page numbers */}
+          <div className="flex items-center gap-1">
+            {/* Previous button */}
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+
+            {/* Page numbers */}
+            {getPageNumbers().map((page, idx) => (
+              <button
+                key={idx}
+                onClick={() => typeof page === 'number' && handlePageChange(page)}
+                disabled={page === '...'}
+                className={`min-w-[32px] px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${page === currentPage
+                  ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30'
+                  : page === '...'
+                    ? 'text-slate-400 cursor-default'
+                    : 'border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
+                  }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            {/* Next button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16">
@@ -382,60 +436,6 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ userInfo, onNavigate, 
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Showing info */}
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Showing <span className="font-medium text-slate-900 dark:text-white">{(currentPage - 1) * PAGE_SIZE + 1}</span> to{' '}
-            <span className="font-medium text-slate-900 dark:text-white">{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of{' '}
-            <span className="font-medium text-slate-900 dark:text-white">{totalCount}</span>
-          </p>
-
-          {/* Page numbers */}
-          <div className="flex items-center gap-1">
-            {/* Previous button */}
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
-            </button>
-
-            {/* Page numbers */}
-            {getPageNumbers().map((page, idx) => (
-              <button
-                key={idx}
-                onClick={() => typeof page === 'number' && handlePageChange(page)}
-                disabled={page === '...'}
-                className={`min - w - [32px] px - 2 py - 1.5 rounded - lg text - xs font - medium transition - colors ${page === currentPage
-                  ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30'
-                  : page === '...'
-                    ? 'text-slate-400 cursor-default'
-                    : 'border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
-                  } `}
-              >
-                {page}
-              </button>
-            ))}
-
-            {/* Next button */}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
           </div>
         </div>
       )}
